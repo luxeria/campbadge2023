@@ -33,6 +33,8 @@ Zwei Beispielapplikationen in C++
 #### [MicroPython](MicroPython/README.md)
 
   * [Simple](Micropython/Simple/): Leds ansteuern
+  * [Clock](Micropython/Clock/): Eine binäre Uhr
+
 
 #### [Rust](Rust/README.md)
 

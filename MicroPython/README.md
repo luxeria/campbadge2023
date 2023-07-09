@@ -7,6 +7,13 @@
 Ein kleines Beispielprogramm welches alle Pixel mit einer zufälligen Farbe
 leuchten lässt.
 
+### [Clock](Clock/main.py)
+
+Eine [binäre Uhr](https://de.wikipedia.org/wiki/Bin%C3%A4re_Uhr), die erste
+Spalte zeigt die aktuelle Stunde, die zweite und dritte Spalte zeigen die
+Minute und die vierte und fünfte Spalte zeigen die Sekunden. Die initiale
+Uhrzeit wird über WLAN und NTP geholt.
+
 ## Beispielprogramme ausführen
 
 Flashe zuerst eine aktuelle Micropython-Version auf dein Board. Für den M5Stamp
