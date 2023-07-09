@@ -4,6 +4,8 @@
  * LEDs ansteuern
  * Farben umrechnen
 
+Rust setup, siehe [Readme](Simple/Readme.md)
+
 ## [Komplexeres Beispiel](Advanced/)
  * Beispiel Bilder
  * Animationen
