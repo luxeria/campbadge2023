@@ -3,7 +3,11 @@
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::*;
-use lux_camp_badge::led::{Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState};
+use lux_camp_badge::led::matrix::Matrix;
+use lux_camp_badge::led::matrix::{
+    Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState,
+};
+use lux_camp_badge::led::Animation;
 use smart_leds::RGB8;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
@@ -47,6 +51,8 @@ struct FormDataMode<'a> {
 struct FormDataAnimation<'a> {
     animation: &'a str,
 }
+
+static mut FLAG: bool = false;
 
 fn main() -> ! {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -169,10 +175,21 @@ fn main() -> ! {
         })
         .unwrap();
 
+    let stop = unsafe { Arc::new(Mutex::new(&mut FLAG)) };
+    struct DummyA {}
+    impl Animation for DummyA {}
+    let s_handler = Arc::clone(&stop);
+    let m = Arc::new(Mutex::new(Matrix::new()));
     let leds2 = Arc::clone(&led_matrix);
+    let m_handler = Arc::clone(&m);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
+
+            //**s_handler.lock().unwrap() = false;
+            let mut m = m_handler.lock().unwrap();
+            m.set(Box::new(DummyA {}));
+            m.run();
 
             if len > MAX_LEN {
                 req.into_status_response(413)?
