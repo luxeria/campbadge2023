@@ -24,7 +24,6 @@ static INDEX_HTML: &str = include_str!("json_post_handler.html");
 
 use serde::Deserialize;
 
-
 #[toml_cfg::toml_config]
 pub struct Config {
     #[default("")]
@@ -61,7 +60,7 @@ fn main() -> ! {
     let led_channel = 0;
     let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5, 5)));
 
-    let led_state = Arc::new(Mutex::new(LedState::new()));
+    let led_state = Arc::new(Mutex::new(LedState::default()));
     let leds = Arc::clone(&led_matrix);
     let mut leds = leds.lock().unwrap();
     leds.set_all_pixel(RGB8::new(25, 0, 0));

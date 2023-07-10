@@ -21,15 +21,17 @@ pub enum LedState {
     Off,
 }
 
-impl LedState {
-    pub fn new() -> Self {
+impl Default for LedState {
+    fn default() -> Self {
         Self::Animation {
             animation: RainbowSlide,
             frame: 0,
             last_tick: EspSystemTime {}.now(),
         }
     }
+}
 
+impl LedState {
     pub fn set_animation(self, animation: Animations) -> Self {
         LedState::Animation {
             animation,
@@ -126,7 +128,7 @@ pub struct LedMatrix {
     led_columns: u8,
     pixels: Vec<RGB<u8>>,
     ws2812: Ws2812Esp32Rmt,
-    state: LedState,
+    _state: LedState,
 }
 
 impl LedMatrix {
@@ -137,7 +139,7 @@ impl LedMatrix {
             led_columns,
             pixels,
             ws2812: Ws2812Esp32Rmt::new(led_channel, led_pin).unwrap(),
-            state: LedState::new(),
+            _state: LedState::default(),
         }
     }
 
