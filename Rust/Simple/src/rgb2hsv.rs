@@ -1,6 +1,7 @@
 use smart_leds::hsv::Hsv;
 use smart_leds_trait::{RGB, RGB8};
 
+#[allow(unused)]
 pub fn hsv2rgb(hsv: Hsv) -> RGB8 {
     let v: u16 = hsv.val as u16;
     let s: u16 = hsv.sat as u16;
@@ -48,6 +49,7 @@ pub fn hsv2rgb(hsv: Hsv) -> RGB8 {
     }
 }
 
+#[allow(unused)]
 pub fn rgb2hsv(rgb: RGB8) -> Hsv {
     const EPS: f32 = 0.0001;
 

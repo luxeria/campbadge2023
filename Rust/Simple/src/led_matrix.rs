@@ -2,14 +2,17 @@ use crate::led_matrix::Animations::{Rainbow, RainbowSlide};
 use esp_idf_svc::systime::EspSystemTime;
 use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::{SmartLedsWrite, RGB};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 
+#[allow(unused)]
 #[derive(Copy, Clone)]
 pub enum Animations {
     Rainbow,
     RainbowSlide,
 }
+
+#[allow(unused)]
 #[derive(Copy, Clone)]
 pub enum LedState {
     Animation {
@@ -20,6 +23,7 @@ pub enum LedState {
     Off,
 }
 
+#[allow(unused)]
 impl LedState {
     pub fn new() -> Self {
         Self::Animation {
@@ -29,18 +33,18 @@ impl LedState {
         }
     }
 
-    pub fn set_animation(self: Self, animation: Animations) -> Self {
+    pub fn set_animation(self, animation: Animations) -> Self {
         LedState::Animation {
             animation,
             frame: 0,
             last_tick: EspSystemTime {}.now(),
         }
     }
-    pub fn set_off(self: Self) -> Self {
+    pub fn set_off(self) -> Self {
         LedState::Off
     }
 
-    pub fn tick(self: Self, led_matrix: &mut LedMatrix) -> Self {
+    pub fn tick(self, led_matrix: &mut LedMatrix) -> Self {
         match self {
             LedState::Animation {
                 animation,
@@ -116,6 +120,7 @@ impl LedState {
     }
 }
 
+#[allow(unused)]
 pub struct LedMatrix {
     led_rows: u8,
     led_columns: u8,
@@ -124,6 +129,7 @@ pub struct LedMatrix {
     state: LedState,
 }
 
+#[allow(unused)]
 impl LedMatrix {
     pub fn new(led_pin: u32, led_channel: u8, led_rows: u8, led_columns: u8) -> Self {
         let pixels = vec![RGB8::new(0, 0, 0); (led_rows * led_columns) as usize];
