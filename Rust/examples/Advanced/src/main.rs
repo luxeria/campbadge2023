@@ -23,7 +23,7 @@ use esp_idf_svc::{
 static INDEX_HTML: &str = include_str!("json_post_handler.html");
 
 use serde::Deserialize;
-use serde_json;
+
 
 #[toml_cfg::toml_config]
 pub struct Config {
@@ -61,8 +61,8 @@ fn main() -> ! {
     let led_channel = 0;
     let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5, 5)));
 
-    let mut led_state = Arc::new(Mutex::new(LedState::new()));
-    let mut leds = Arc::clone(&led_matrix);
+    let led_state = Arc::new(Mutex::new(LedState::new()));
+    let leds = Arc::clone(&led_matrix);
     let mut leds = leds.lock().unwrap();
     leds.set_all_pixel(RGB8::new(25, 0, 0));
     leds.write_pixels();
@@ -96,7 +96,7 @@ fn main() -> ! {
             Ok(())
         })
         .unwrap();
-    let mut led_state2 = Arc::clone(&led_state);
+    let led_state2 = Arc::clone(&led_state);
     server
         .fn_handler("/mode", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
@@ -132,7 +132,7 @@ fn main() -> ! {
             Ok(())
         })
         .unwrap();
-    let mut led_state2 = Arc::clone(&led_state);
+    let led_state2 = Arc::clone(&led_state);
     server
         .fn_handler("/animation", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
@@ -170,7 +170,7 @@ fn main() -> ! {
         })
         .unwrap();
 
-    let mut leds2 = Arc::clone(&led_matrix);
+    let leds2 = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
@@ -187,11 +187,11 @@ fn main() -> ! {
 
             if let Ok(form) = serde_json::from_slice::<FormData>(&buf) {
                 let mut leds2 = leds2.lock().unwrap();
-                let pixels = form.pixels.split(",").into_iter();
+                let pixels = form.pixels.split(',');
                 pixels.enumerate().for_each(|(i, pixel)| {
                     let x = (i % 5) as u8;
                     let y = (i / 5) as u8;
-                    let color = hex::decode(pixel.strip_prefix("#").unwrap())
+                    let color = hex::decode(pixel.strip_prefix('#').unwrap())
                         .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
                         .unwrap();
                     leds2.set_pixel(x, y, color);
@@ -210,10 +210,10 @@ fn main() -> ! {
     println!("Server awaiting connection");
 
     loop {
-        let mut led_matrix = Arc::clone(&led_matrix);
+        let led_matrix = Arc::clone(&led_matrix);
         let mut led_matrix = led_matrix.lock().unwrap();
 
-        let mut led_state = Arc::clone(&led_state);
+        let led_state = Arc::clone(&led_state);
         let mut led_state = led_state.lock().unwrap();
 
         *led_state = led_state.deref_mut().tick(led_matrix.deref_mut());
