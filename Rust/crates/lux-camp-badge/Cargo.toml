@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 log = { version = "0.4.17", default-features = false }
+esp-idf-sys = { version = "0.33", default-features = false }
 esp-idf-hal = { version = "0.41", optional = true, default-features = false }
 esp-idf-svc = { version = "0.46", optional = true, default-features = false }
 embedded-svc = { version = "0.25", optional = true, default-features = false }
