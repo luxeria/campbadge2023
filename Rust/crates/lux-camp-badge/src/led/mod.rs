@@ -1,8 +1,8 @@
-use crate::led_matrix::Animations::{Rainbow, RainbowSlide};
+use crate::led::Animations::{Rainbow, RainbowSlide};
 use esp_idf_svc::systime::EspSystemTime;
 use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::{SmartLedsWrite, RGB};
-use std::time::{Duration};
+use std::time::Duration;
 use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 
 #[derive(Copy, Clone)]

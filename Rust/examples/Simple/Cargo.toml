@@ -3,18 +3,7 @@ name = "simple"
 version = "0.1.0"
 authors = ["Raphael Theiler <peanut@esheep.ch>"]
 edition = "2021"
-resolver = "2"
 rust-version = "1.66"
-
-[profile.release]
-strip = true
-opt-level = "s"
-lto = true
-#codegen-units = 1
-
-[profile.dev]
-debug = true    # Symbols are nice and they don't increase the size on Flash
-opt-level = "z"
 
 [features]
 

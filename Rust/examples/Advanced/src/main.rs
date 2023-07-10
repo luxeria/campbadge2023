@@ -1,15 +1,11 @@
 #![feature(str_split_remainder)]
 
-mod led_matrix;
-mod rgb2hsv;
-mod wifi;
-
-use std::ops::DerefMut;
-use crate::led_matrix::{LedMatrix, LedState};
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::*;
+use lux_camp_badge::led::{Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState};
 use smart_leds::RGB8;
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -26,10 +22,8 @@ use esp_idf_svc::{
 
 static INDEX_HTML: &str = include_str!("json_post_handler.html");
 
-use crate::led_matrix::Animations::{Rainbow, RainbowSlide};
 use serde::Deserialize;
 use serde_json;
-
 
 #[toml_cfg::toml_config]
 pub struct Config {
@@ -81,7 +75,7 @@ fn main() -> ! {
     let app_config = CONFIG;
 
     // Connect to the Wi-Fi network
-    let _wifi = wifi::wifi(
+    let _wifi = lux_camp_badge::wifi::connect(
         app_config.wifi_ssid,
         app_config.wifi_psk,
         peripherals.modem,

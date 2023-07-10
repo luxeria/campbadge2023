@@ -3,23 +3,10 @@ name = "hello-stamp-c3v2"
 version = "0.1.0"
 authors = ["Raphael Theiler <peanut@esheep.ch>"]
 edition = "2021"
-resolver = "2"
 rust-version = "1.66"
 
-[profile.release]
-strip = true
-opt-level = "s"
-lto = true
-#codegen-units = 1
-
-[profile.dev]
-debug = true    # Symbols are nice and they don't increase the size on Flash
-opt-level = "z"
-
 [features]
-
 default = ["std", "hal", "esp-idf-sys/native","smart-leds-trait", "embedded-graphics-core"]
-
 
 pio = ["esp-idf-sys/pio"]
 all = ["std", "nightly", "experimental", "embassy"]
@@ -46,6 +33,7 @@ url = "*"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 hex = "0.4.3"
+lux-camp-badge = { path = "../../crates/lux-camp-badge" }
 
 [build-dependencies]
 embuild = "0.31.2"

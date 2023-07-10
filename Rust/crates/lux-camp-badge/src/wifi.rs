@@ -6,7 +6,7 @@ use esp_idf_hal::peripheral;
 use esp_idf_svc::{eventloop::EspSystemEventLoop, wifi::BlockingWifi, wifi::EspWifi};
 use log::info;
 
-pub fn wifi(
+pub fn connect(
     ssid: &str,
     pass: &str,
     modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,

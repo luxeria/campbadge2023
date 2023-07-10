@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "examples/Advanced",
+    "examples/Simple",
+    "crates/lux-camp-badge"
+]
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+[profile.dev]
+debug = true    # Symbols are nice and they don't increase the size on Flash
+opt-level = "z"
