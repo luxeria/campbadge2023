@@ -30,21 +30,21 @@ impl LedState {
         }
     }
 
-    pub fn set_animation(self: Self, animation: Animations) -> Self {
+    pub fn set_animation(self, animation: Animations) -> Self {
         LedState::Animation {
             animation,
             frame: 0,
             last_tick: EspSystemTime {}.now(),
         }
     }
-    pub fn set_off(self: Self) -> Self {
+    pub fn set_off(self) -> Self {
         LedState::Off
     }
-    pub fn set_interactive(self: Self) -> Self {
+    pub fn set_interactive(self) -> Self {
         LedState::Interactive
     }
 
-    pub fn tick(self: Self, led_matrix: &mut LedMatrix) -> Self {
+    pub fn tick(self, led_matrix: &mut LedMatrix) -> Self {
         match self {
             LedState::Animation {
                 animation,
