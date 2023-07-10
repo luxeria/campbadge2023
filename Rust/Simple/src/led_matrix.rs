@@ -1,75 +1,120 @@
-use std::time::{Duration, SystemTime};
-use esp_idf_svc::systime::EspSystemTime;
-use smart_leds::hsv::{Hsv, hsv2rgb};
-use smart_leds_trait::{SmartLedsWrite, RGB};
-use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 use crate::led_matrix::Animations::{Rainbow, RainbowSlide};
+use esp_idf_svc::systime::EspSystemTime;
+use smart_leds::hsv::{hsv2rgb, Hsv};
+use smart_leds_trait::{SmartLedsWrite, RGB};
+use std::time::{Duration, SystemTime};
+use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 
-#[derive(Copy,Clone)]
-pub enum Animations{
+#[derive(Copy, Clone)]
+pub enum Animations {
     Rainbow,
     RainbowSlide,
 }
-#[derive(Copy,Clone)]
-pub enum LedState{
-    Animation{animation: Animations, frame: u16,last_tick: Duration },
+#[derive(Copy, Clone)]
+pub enum LedState {
+    Animation {
+        animation: Animations,
+        frame: u16,
+        last_tick: Duration,
+    },
     Off,
 }
 
-
-impl LedState{
-    pub fn new() -> Self{
+impl LedState {
+    pub fn new() -> Self {
         Self::Animation {
             animation: RainbowSlide,
-            frame:0,
-            last_tick: EspSystemTime{}.now(),
+            frame: 0,
+            last_tick: EspSystemTime {}.now(),
         }
     }
 
-    pub fn set_animation(self: Self, animation:Animations) -> Self{
+    pub fn set_animation(self: Self, animation: Animations) -> Self {
         LedState::Animation {
-            animation, frame: 0, last_tick: EspSystemTime{}.now()
+            animation,
+            frame: 0,
+            last_tick: EspSystemTime {}.now(),
         }
     }
-    pub fn set_off(self: Self) -> Self{
+    pub fn set_off(self: Self) -> Self {
         LedState::Off
     }
 
-
     pub fn tick(self: Self, led_matrix: &mut LedMatrix) -> Self {
         match self {
-            LedState::Animation{animation,frame,last_tick} => {
-                 match animation {
-                    Rainbow => Self::rainbow(led_matrix, animation, frame, last_tick),
-                    RainbowSlide => Self::rainbow_slide(led_matrix, animation, frame, last_tick)
-                }
-            }
-            LedState::Off => { self }
+            LedState::Animation {
+                animation,
+                frame,
+                last_tick,
+            } => match animation {
+                Rainbow => Self::rainbow(led_matrix, animation, frame, last_tick),
+                RainbowSlide => Self::rainbow_slide(led_matrix, animation, frame, last_tick),
+            },
+            LedState::Off => self,
         }
     }
 
-    fn rainbow_slide(led_matrix: &mut LedMatrix, animation: Animations, frame: u16, last_tick: Duration) -> LedState {
+    fn rainbow_slide(
+        led_matrix: &mut LedMatrix,
+        animation: Animations,
+        frame: u16,
+        last_tick: Duration,
+    ) -> LedState {
         if (EspSystemTime {}.now() - last_tick) > Duration::from_millis(100) {
             //led_matrix.set_all_pixel(hsv2rgb(Hsv { hue: (frame % 255) as u8, sat: 255, val: 25 }));
-            led_matrix.pixels.iter_mut().enumerate().for_each(|(i, pixel)| { *pixel = hsv2rgb(Hsv { hue: ((frame + (i * 5) as u16) % 255) as u8, sat: 255, val: 25 }) });
+            led_matrix
+                .pixels
+                .iter_mut()
+                .enumerate()
+                .for_each(|(i, pixel)| {
+                    *pixel = hsv2rgb(Hsv {
+                        hue: ((frame + (i * 5) as u16) % 255) as u8,
+                        sat: 255,
+                        val: 25,
+                    })
+                });
             led_matrix.write_pixels();
-            LedState::Animation { animation, frame: (frame + 5) % 255, last_tick: EspSystemTime {}.now() }
+            LedState::Animation {
+                animation,
+                frame: (frame + 5) % 255,
+                last_tick: EspSystemTime {}.now(),
+            }
         } else {
-            LedState::Animation { animation, frame, last_tick }
+            LedState::Animation {
+                animation,
+                frame,
+                last_tick,
+            }
         }
     }
 
-    fn rainbow(led_matrix: &mut LedMatrix, animation: Animations, frame: u16, last_tick: Duration) -> LedState {
+    fn rainbow(
+        led_matrix: &mut LedMatrix,
+        animation: Animations,
+        frame: u16,
+        last_tick: Duration,
+    ) -> LedState {
         if (EspSystemTime {}.now() - last_tick) > Duration::from_millis(100) {
-            led_matrix.set_all_pixel(hsv2rgb(Hsv { hue: (frame % 255) as u8, sat: 255, val: 25 }));
+            led_matrix.set_all_pixel(hsv2rgb(Hsv {
+                hue: (frame % 255) as u8,
+                sat: 255,
+                val: 25,
+            }));
             led_matrix.write_pixels();
-            LedState::Animation { animation, frame: (frame + 5) % 255, last_tick: EspSystemTime {}.now() }
+            LedState::Animation {
+                animation,
+                frame: (frame + 5) % 255,
+                last_tick: EspSystemTime {}.now(),
+            }
         } else {
-            LedState::Animation { animation, frame, last_tick }
+            LedState::Animation {
+                animation,
+                frame,
+                last_tick,
+            }
         }
     }
 }
-
 
 pub struct LedMatrix {
     led_rows: u8,

@@ -61,17 +61,13 @@ pub fn rgb2hsv(rgb: RGB8) -> Hsv {
 
     let hue = match () {
         _ if delta < EPS || max < EPS => 0.,
-        _ if max == r => (6.+ (g - b)/delta) % 6.,
-        _ if max == g => (b - r)/delta + 2.,
-        _ if max == b => (r - g)/delta + 4.,
-        _ => 0.
+        _ if max == r => (6. + (g - b) / delta) % 6.,
+        _ if max == g => (b - r) / delta + 2.,
+        _ if max == b => (r - g) / delta + 4.,
+        _ => 0.,
     } / 6.;
 
-    let sat = if max < EPS {
-        0.
-    } else {
-        delta / max
-    };
+    let sat = if max < EPS { 0. } else { delta / max };
 
     let val = max;
 
