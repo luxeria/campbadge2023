@@ -13,18 +13,10 @@ use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 
 pub use self::state::AnimationSet;
 
-use super::{Animation, FrameBuf, MatrixSize};
-
-//pub struct Config;
-//impl MatrixSize for Config {
-//    const X: usize = 5;
-//    const Y: usize = 5;
-//}
+use super::{Animation, FrameBuf, MatrixConfig};
 
 lazy_static! {
     static ref STOP: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-    //static ref INSTANCE: Arc<Mutex<Option<JoinHandle<Matrix<Config>>>>> =
-    //    Arc::new(Mutex::new(None));
 }
 
 #[derive(Copy, Clone)]
@@ -193,8 +185,9 @@ mod state {
 }
 
 pub struct Missing<State>(PhantomData<fn() -> State>);
+#[derive(Clone)]
 pub struct DummyConfig;
-impl MatrixSize for DummyConfig {
+impl MatrixConfig for DummyConfig {
     const X: usize = 0;
     const Y: usize = 0;
     const AREA: usize = 0;
@@ -203,7 +196,7 @@ impl crate::led::Animation<DummyConfig> for () {}
 
 /// Builder for [Matrix] where setting an Animation is mandatory.
 #[must_use]
-pub struct MatrixBuilder<S: MatrixSize, AnimationState> {
+pub struct MatrixBuilder<S: MatrixConfig, AnimationState> {
     animation: Box<dyn Animation<S> + Send>,
     led_pin: u32,
     led_channel: u8,
@@ -211,7 +204,7 @@ pub struct MatrixBuilder<S: MatrixSize, AnimationState> {
     marker: PhantomData<fn() -> AnimationState>,
 }
 
-impl<S: MatrixSize, A> MatrixBuilder<S, A> {
+impl<S: MatrixConfig, A> MatrixBuilder<S, A> {
     pub fn led_pin(mut self, no: u32) -> Self {
         self.led_pin = no;
         self
@@ -228,13 +221,13 @@ impl<S: MatrixSize, A> MatrixBuilder<S, A> {
     }
 }
 
-impl<S: MatrixSize> MatrixBuilder<S, Missing<AnimationSet>> {
+impl<S: MatrixConfig> MatrixBuilder<S, Missing<AnimationSet>> {
     pub fn animation<Config>(
         self,
         animation: Box<dyn Animation<Config> + Send>,
     ) -> MatrixBuilder<Config, AnimationSet>
     where
-        Config: MatrixSize,
+        Config: MatrixConfig,
     {
         MatrixBuilder {
             animation,
@@ -246,18 +239,16 @@ impl<S: MatrixSize> MatrixBuilder<S, Missing<AnimationSet>> {
     }
 }
 
-impl<S: MatrixSize> MatrixBuilder<S, AnimationSet> {
+impl<S: MatrixConfig> MatrixBuilder<S, AnimationSet> {
     /// Start the matrix in another thread.
     ///
     /// If there is already another instance running, the other instance will be stopped.
-    pub fn run(self) -> JoinHandle<Matrix<S>> {
-        //stop();
-
+    pub fn run(self) -> Arc<Mutex<Option<Handle<S>>>> {
         let led_matrix = LedMatrix::new(
             self.led_pin,
             self.led_channel,
-            <S as MatrixSize>::X,
-            <S as MatrixSize>::Y,
+            <S as MatrixConfig>::X,
+            <S as MatrixConfig>::Y,
         );
 
         let mut matrix = Matrix {
@@ -267,23 +258,21 @@ impl<S: MatrixSize> MatrixBuilder<S, AnimationSet> {
             tick: EspSystemTime {}.now(),
         };
         matrix.init_animation();
-        matrix.run()
+        Arc::new(Mutex::new(Some(Handle(matrix.run()))))
     }
 }
 
-pub struct Matrix<S: MatrixSize> {
+pub struct Matrix<S: MatrixConfig> {
     animation: Box<dyn Animation<S> + Send>,
     led_matrix: LedMatrix,
     frame_time: Duration,
     tick: Duration,
 }
 
-impl<S: MatrixSize> Matrix<S> {
+impl<S: MatrixConfig> Matrix<S> {
     /// Creates a new [MatrixBuilder] with the following defaults:
     /// * `led_pin`: 10
     /// * `led_channel`: 0
-    /// * `dimension_x`: 5
-    /// * `dimension_y`: 5
     /// * `fps`: 24
     pub fn new() -> MatrixBuilder<DummyConfig, Missing<AnimationSet>> {
         MatrixBuilder {
@@ -315,7 +304,7 @@ impl<S: MatrixSize> Matrix<S> {
         }
     }
 
-    fn run(mut self) -> JoinHandle<Self> {
+    fn run(mut self) -> JoinHandle<Matrix<S>> {
         std::thread::spawn(|| loop {
             self.tick = EspSystemTime {}.now();
 
@@ -333,27 +322,35 @@ impl<S: MatrixSize> Matrix<S> {
     }
 }
 
-pub fn start<S: MatrixSize>(mut matrix: Matrix<S>) -> JoinHandle<Matrix<S>> {
-    *STOP.lock().unwrap() = false;
-    matrix.init_animation();
-    matrix.run()
+pub struct Handle<S: MatrixConfig>(JoinHandle<Matrix<S>>);
+
+impl<S: MatrixConfig> Handle<S> {
+    fn start(mut matrix: Matrix<S>) -> Self {
+        *STOP.lock().unwrap() = false;
+        matrix.init_animation();
+        Self(matrix.run())
+    }
+
+    /// Restart with a new animation (if there is already a running instance).
+    fn update(self, animation: Box<dyn Animation<S> + Send>) -> Self {
+        let mut matrix = self.stop();
+        matrix.set_animation(animation);
+        Self::start(matrix)
+    }
+
+    /// Stop the matrix and return the underlying instance if it was running.
+    fn stop(self) -> Matrix<S> {
+        *STOP.lock().unwrap() = true;
+        self.0.join().unwrap()
+    }
 }
 
-/// Restart with a new animation (if there is already a running instance).
-pub fn update<S>(
-    animation: Box<dyn Animation<S> + Send>,
-    handle: JoinHandle<Matrix<S>>,
-) -> JoinHandle<Matrix<S>>
+pub fn update<S>(handle: &Arc<Mutex<Option<Handle<S>>>>, animation: Box<dyn Animation<S> + Send>)
 where
-    S: MatrixSize,
+    S: MatrixConfig,
 {
-    let mut matrix = stop(handle);
-    matrix.set_animation(animation);
-    start(matrix)
-}
-
-/// Stop the matrix and return the underlying instance if it was running.
-pub fn stop<S: MatrixSize>(handle: JoinHandle<Matrix<S>>) -> Matrix<S> {
-    *STOP.lock().unwrap() = true;
-    handle.join().unwrap()
+    let mut handle = handle.lock().unwrap();
+    if let Some(inner) = handle.take() {
+        let _ = handle.insert(inner.update(animation));
+    }
 }
