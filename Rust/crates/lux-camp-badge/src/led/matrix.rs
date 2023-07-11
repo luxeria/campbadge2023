@@ -15,16 +15,16 @@ pub use self::state::AnimationSet;
 
 use super::{Animation, FrameBuf, MatrixSize};
 
-pub struct Config;
-impl MatrixSize for Config {
-    const X: usize = 5;
-    const Y: usize = 5;
-}
+//pub struct Config;
+//impl MatrixSize for Config {
+//    const X: usize = 5;
+//    const Y: usize = 5;
+//}
 
 lazy_static! {
     static ref STOP: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-    static ref INSTANCE: Arc<Mutex<Option<JoinHandle<Matrix<Config>>>>> =
-        Arc::new(Mutex::new(None));
+    //static ref INSTANCE: Arc<Mutex<Option<JoinHandle<Matrix<Config>>>>> =
+    //    Arc::new(Mutex::new(None));
 }
 
 #[derive(Copy, Clone)]
@@ -146,15 +146,15 @@ impl LedState {
 }
 
 pub struct LedMatrix {
-    led_rows: u8,
-    led_columns: u8,
+    led_rows: usize,
+    led_columns: usize,
     pixels: FrameBuf,
     ws2812: Ws2812Esp32Rmt,
     _state: LedState,
 }
 
 impl LedMatrix {
-    pub fn new(led_pin: u32, led_channel: u8, led_rows: u8, led_columns: u8) -> Self {
+    pub fn new(led_pin: u32, led_channel: u8, led_rows: usize, led_columns: usize) -> Self {
         let pixels = vec![RGB8::new(0, 0, 0); (led_rows * led_columns) as usize];
         LedMatrix {
             led_rows,
@@ -165,24 +165,24 @@ impl LedMatrix {
         }
     }
 
-    pub fn set_pixel(&mut self, x: u8, y: u8, color: RGB8) {
-        self.pixels[(x + y * self.led_columns) as usize] = color;
+    pub fn set_pixel(&mut self, x: usize, y: usize, color: RGB8) {
+        self.pixels[x + y * self.led_columns] = color;
     }
     pub fn set_all_pixel(&mut self, color: RGB8) {
         self.pixels.iter_mut().for_each(|pixel| *pixel = color);
     }
-    pub fn get_pixel(&mut self, x: u8, y: u8) -> RGB8 {
-        self.pixels[(x + y * self.led_columns) as usize]
+    pub fn get_pixel(&mut self, x: usize, y: usize) -> RGB8 {
+        self.pixels[x + y * self.led_columns]
     }
     pub fn write_pixels(&mut self) {
         let pixels = self.pixels.iter().copied();
         self.ws2812.write(pixels).unwrap();
     }
     pub fn led_rows(&self) -> u8 {
-        self.led_rows
+        self.led_rows as u8
     }
     pub fn led_columns(&self) -> u8 {
-        self.led_columns
+        self.led_columns as u8
     }
 }
 
@@ -193,18 +193,20 @@ mod state {
 }
 
 pub struct Missing<State>(PhantomData<fn() -> State>);
-impl crate::led::Animation for () {
-    type Dimension = Config;
+pub struct DummyConfig;
+impl MatrixSize for DummyConfig {
+    const X: usize = 0;
+    const Y: usize = 0;
+    const AREA: usize = 0;
 }
+impl crate::led::Animation<DummyConfig> for () {}
 
 /// Builder for [Matrix] where setting an Animation is mandatory.
 #[must_use]
-pub struct MatrixBuilder<Size: MatrixSize, AnimationState> {
-    animation: Box<dyn Animation<Dimension = Size> + Send>,
+pub struct MatrixBuilder<S: MatrixSize, AnimationState> {
+    animation: Box<dyn Animation<S> + Send>,
     led_pin: u32,
     led_channel: u8,
-    dimension_x: u8,
-    dimension_y: u8,
     fps: u8,
     marker: PhantomData<fn() -> AnimationState>,
 }
@@ -220,16 +222,6 @@ impl<S: MatrixSize, A> MatrixBuilder<S, A> {
         self
     }
 
-    pub fn dimension_x(mut self, n: u8) -> Self {
-        self.dimension_x = n;
-        self
-    }
-
-    pub fn dimension_y(mut self, n: u8) -> Self {
-        self.dimension_y = n;
-        self
-    }
-
     pub fn fps(mut self, n: u8) -> Self {
         self.fps = n;
         self
@@ -237,66 +229,67 @@ impl<S: MatrixSize, A> MatrixBuilder<S, A> {
 }
 
 impl<S: MatrixSize> MatrixBuilder<S, Missing<AnimationSet>> {
-    pub fn animation(
+    pub fn animation<Config>(
         self,
-        animation: Box<dyn Animation<Dimension = S> + Send>,
-    ) -> MatrixBuilder<S, AnimationSet> {
+        animation: Box<dyn Animation<Config> + Send>,
+    ) -> MatrixBuilder<Config, AnimationSet>
+    where
+        Config: MatrixSize,
+    {
         MatrixBuilder {
             animation,
             led_channel: self.led_channel,
             led_pin: self.led_pin,
-            dimension_x: self.dimension_x,
-            dimension_y: self.dimension_y,
-            fps: 24,
+            fps: self.fps,
             marker: PhantomData,
         }
     }
 }
 
-impl MatrixBuilder<Config, AnimationSet> {
+impl<S: MatrixSize> MatrixBuilder<S, AnimationSet> {
     /// Start the matrix in another thread.
     ///
     /// If there is already another instance running, the other instance will be stopped.
-    pub fn run(self) {
-        stop();
+    pub fn run(self) -> JoinHandle<Matrix<S>> {
+        //stop();
 
         let led_matrix = LedMatrix::new(
             self.led_pin,
             self.led_channel,
-            self.dimension_x,
-            self.dimension_y,
+            <S as MatrixSize>::X,
+            <S as MatrixSize>::Y,
         );
 
-        start(Matrix {
+        let mut matrix = Matrix {
             animation: self.animation,
             led_matrix,
             frame_time: Duration::from_millis(1000 / self.fps as u64),
             tick: EspSystemTime {}.now(),
-        })
+        };
+        matrix.init_animation();
+        matrix.run()
     }
 }
 
 pub struct Matrix<S: MatrixSize> {
-    animation: Box<dyn Animation<Dimension = S> + Send>,
+    animation: Box<dyn Animation<S> + Send>,
     led_matrix: LedMatrix,
     frame_time: Duration,
     tick: Duration,
 }
 
-impl Matrix<Config> {
+impl<S: MatrixSize> Matrix<S> {
     /// Creates a new [MatrixBuilder] with the following defaults:
     /// * `led_pin`: 10
     /// * `led_channel`: 0
     /// * `dimension_x`: 5
     /// * `dimension_y`: 5
     /// * `fps`: 24
-    pub fn new() -> MatrixBuilder<Config, Missing<AnimationSet>> {
+    pub fn new() -> MatrixBuilder<DummyConfig, Missing<AnimationSet>> {
         MatrixBuilder {
             animation: Box::new(()),
             led_pin: 10,
             led_channel: 0,
-            dimension_x: 5,
-            dimension_y: 5,
             fps: 24,
             marker: PhantomData,
         }
@@ -308,7 +301,7 @@ impl Matrix<Config> {
         }
     }
 
-    fn set_animation(&mut self, animation: Box<dyn Animation<Dimension = Config> + Send>) {
+    fn set_animation(&mut self, animation: Box<dyn Animation<S> + Send>) {
         self.animation = animation;
         self.init_animation();
     }
@@ -340,24 +333,27 @@ impl Matrix<Config> {
     }
 }
 
-fn start(mut matrix: Matrix<Config>) {
+pub fn start<S: MatrixSize>(mut matrix: Matrix<S>) -> JoinHandle<Matrix<S>> {
+    *STOP.lock().unwrap() = false;
     matrix.init_animation();
-    *INSTANCE.lock().unwrap() = Some(matrix.run());
+    matrix.run()
 }
 
 /// Restart with a new animation (if there is already a running instance).
-pub fn update(animation: Box<dyn Animation<Dimension = Config> + Send>) {
-    if let Some(mut matrix) = stop() {
-        matrix.set_animation(animation);
-        start(matrix);
-    };
+pub fn update<S>(
+    animation: Box<dyn Animation<S> + Send>,
+    handle: JoinHandle<Matrix<S>>,
+) -> JoinHandle<Matrix<S>>
+where
+    S: MatrixSize,
+{
+    let mut matrix = stop(handle);
+    matrix.set_animation(animation);
+    start(matrix)
 }
 
 /// Stop the matrix and return the underlying instance if it was running.
-pub fn stop() -> Option<Matrix<Config>> {
+pub fn stop<S: MatrixSize>(handle: JoinHandle<Matrix<S>>) -> Matrix<S> {
     *STOP.lock().unwrap() = true;
-    let mut lock = INSTANCE.lock().unwrap();
-    let matrix = lock.take().map(|handle| handle.join().unwrap());
-    *STOP.lock().unwrap() = false;
-    matrix
+    handle.join().unwrap()
 }

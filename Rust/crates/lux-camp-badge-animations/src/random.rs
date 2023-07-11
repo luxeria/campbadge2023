@@ -1,5 +1,5 @@
 use esp_idf_svc::systime::EspSystemTime;
-use lux_camp_badge::led::{matrix::Config, Animation, FrameBuf};
+use lux_camp_badge::led::{Animation, FrameBuf, MatrixSize};
 use smart_leds_trait::RGB8;
 use std::time::Duration;
 
@@ -13,9 +13,7 @@ impl Default for RandomAnimation {
     }
 }
 
-impl Animation for RandomAnimation {
-    type Dimension = Config;
-
+impl<C: MatrixSize> Animation<C> for RandomAnimation {
     fn update(&mut self, tick: Duration) -> Option<FrameBuf> {
         let interval = Duration::from_millis(tick.as_micros() as u64 % 1000);
         if self.0 + interval > tick {
@@ -23,9 +21,9 @@ impl Animation for RandomAnimation {
         }
         self.0 = tick;
 
-        let mut buf = vec![RGB8::new(0, 0, 0); 25];
+        let mut buf = vec![RGB8::new(0, 0, 0); <C as MatrixSize>::AREA];
         let seed = self.0.as_micros() as u64;
-        buf[seed as usize % 25] = RGB8::new(
+        buf[seed as usize % <C as MatrixSize>::AREA] = RGB8::new(
             ((seed + interval.as_micros() as u64) % 255) as u8,
             (seed % 255) as u8,
             ((seed - 122) % 255) as u8,

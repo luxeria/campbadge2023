@@ -8,7 +8,7 @@ use lux_camp_badge::led::matrix::{self, Matrix};
 use lux_camp_badge::led::matrix::{
     Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState,
 };
-use lux_camp_badge::led::{Animation, FrameBuf};
+use lux_camp_badge::led::{Animation, FrameBuf, MatrixSize};
 use lux_camp_badge_animations::random::RandomAnimation;
 use smart_leds::RGB8;
 use std::ops::DerefMut;
@@ -175,16 +175,27 @@ fn main() -> ! {
     //    })
     //    .unwrap();
 
-    let _ = Matrix::new()
-        .animation(Box::new(RandomAnimation::default()))
+    struct Size;
+    impl MatrixSize for Size {
+        const AREA: usize = 25;
+        const X: usize = 5;
+        const Y: usize = 5;
+    }
+    let handle = Matrix::<Size>::new()
+        .animation::<Size>(Box::new(RandomAnimation::default()))
         .run();
+    let handle = Arc::new(Mutex::new(Some(handle)));
+    let h = Arc::clone(&handle);
 
     //let leds2 = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
 
-            matrix::update(Box::new(RandomAnimation::default()));
+            let animation = Box::new(RandomAnimation::default());
+            let mut handle = h.lock().unwrap();
+            let new_handle = matrix::update(animation, handle.take().unwrap());
+            handle.insert(new_handle);
 
             if len > MAX_LEN {
                 req.into_status_response(413)?
