@@ -1,21 +1,18 @@
 [package]
-name = "lux-camp-badge"
+name = "lux-camp-badge-animations"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
-log = { version = "0.4.17", default-features = false }
+lux-camp-badge = { path = "../lux-camp-badge" }
+
 esp-idf-sys = { version = "0.33", default-features = false }
 esp-idf-hal = { version = "0.41", optional = true, default-features = false }
 esp-idf-svc = { version = "0.46", optional = true, default-features = false }
 embedded-svc = { version = "0.25", optional = true, default-features = false }
 smart-leds = "0.3"
 smart-leds-trait = { version = "0.2", optional = true }
-ws2812-esp32-rmt-driver = "*"
-lazy_static = "1"
 
 [features]
 default = ["std", "hal", "smart-leds-trait"]

@@ -6,7 +6,14 @@ pub mod matrix;
 
 pub type FrameBuf = Vec<RGB<u8>>;
 
+pub trait MatrixSize {
+    const X: usize;
+    const Y: usize;
+}
+
 pub trait Animation {
+    type Dimension: MatrixSize;
+
     fn init(&mut self) -> Option<FrameBuf> {
         None
     }

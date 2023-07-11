@@ -1,13 +1,15 @@
 #![feature(str_split_remainder)]
 
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+use esp_idf_svc::systime::EspSystemTime;
+use esp_idf_sys::{self as _, CONFIG_GARP_TMR_INTERVAL}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::*;
-use lux_camp_badge::led::matrix::Matrix;
+use lux_camp_badge::led::matrix::{self, Matrix};
 use lux_camp_badge::led::matrix::{
     Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState,
 };
-use lux_camp_badge::led::Animation;
+use lux_camp_badge::led::{Animation, FrameBuf};
+use lux_camp_badge_animations::random::RandomAnimation;
 use smart_leds::RGB8;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
@@ -52,8 +54,6 @@ struct FormDataAnimation<'a> {
     animation: &'a str,
 }
 
-static mut FLAG: bool = false;
-
 fn main() -> ! {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -62,15 +62,15 @@ fn main() -> ! {
     esp_idf_svc::log::EspLogger::initialize_default();
     let _nvs = EspDefaultNvsPartition::take().unwrap();
 
-    let led_pin = 10;
-    let led_channel = 0;
-    let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5, 5)));
+    //let led_pin = 10;
+    //let led_channel = 0;
+    //let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5)));
 
-    let led_state = Arc::new(Mutex::new(LedState::default()));
-    let leds = Arc::clone(&led_matrix);
-    let mut leds = leds.lock().unwrap();
-    leds.set_all_pixel(RGB8::new(25, 0, 0));
-    leds.write_pixels();
+    //let led_state = Arc::new(Mutex::new(LedState::default()));
+    //let leds = Arc::clone(&led_matrix);
+    //let mut leds = leds.lock().unwrap();
+    //leds.set_all_pixel(RGB8::new(25, 0, 0));
+    //leds.write_pixels();
     info!("Hello, world!");
 
     let peripherals = Peripherals::take().unwrap();
@@ -87,9 +87,9 @@ fn main() -> ! {
         sysloop,
     )
     .unwrap();
-    leds.set_all_pixel(RGB8::new(0, 25, 25));
-    leds.write_pixels();
-    drop(leds);
+    //leds.set_all_pixel(RGB8::new(0, 25, 25));
+    //leds.write_pixels();
+    //drop(leds);
 
     // Set the HTTP server
     let mut server = EspHttpServer::new(&Configuration::default()).unwrap();
@@ -101,95 +101,90 @@ fn main() -> ! {
             Ok(())
         })
         .unwrap();
-    let led_state2 = Arc::clone(&led_state);
-    server
-        .fn_handler("/mode", Method::Post, move |mut req| {
-            let len = req.content_len().unwrap_or(0) as usize;
+    //let led_state2 = Arc::clone(&led_state);
+    //server
+    //    .fn_handler("/mode", Method::Post, move |mut req| {
+    //        let len = req.content_len().unwrap_or(0) as usize;
 
-            let mut led_state2 = led_state2.lock().unwrap();
-            if len > MAX_LEN {
-                req.into_status_response(413)?
-                    .write_all("Request too big".as_bytes())?;
-                return Ok(());
-            }
+    //        let mut led_state2 = led_state2.lock().unwrap();
+    //        if len > MAX_LEN {
+    //            req.into_status_response(413)?
+    //                .write_all("Request too big".as_bytes())?;
+    //            return Ok(());
+    //        }
 
-            let mut buf = vec![0; len];
-            req.read_exact(&mut buf)?;
-            let mut resp = req.into_ok_response()?;
+    //        let mut buf = vec![0; len];
+    //        req.read_exact(&mut buf)?;
+    //        let mut resp = req.into_ok_response()?;
 
-            if let Ok(form) = serde_json::from_slice::<FormDataMode>(&buf) {
-                match form.mode {
-                    "animation" => {
-                        *led_state2 = led_state2.set_animation(Rainbow);
-                    }
-                    "interactive" => {
-                        *led_state2 = led_state2.set_interactive();
-                    }
-                    "off" => {}
-                    _ => {}
-                }
+    //        if let Ok(form) = serde_json::from_slice::<FormDataMode>(&buf) {
+    //            match form.mode {
+    //                "animation" => {
+    //                    *led_state2 = led_state2.set_animation(Rainbow);
+    //                }
+    //                "interactive" => {
+    //                    *led_state2 = led_state2.set_interactive();
+    //                }
+    //                "off" => {}
+    //                _ => {}
+    //            }
 
-                write!(resp, "Hello, {}", form.mode)?;
-            } else {
-                resp.write_all("JSON error".as_bytes())?;
-            }
+    //            write!(resp, "Hello, {}", form.mode)?;
+    //        } else {
+    //            resp.write_all("JSON error".as_bytes())?;
+    //        }
 
-            Ok(())
-        })
-        .unwrap();
-    let led_state2 = Arc::clone(&led_state);
-    server
-        .fn_handler("/animation", Method::Post, move |mut req| {
-            let len = req.content_len().unwrap_or(0) as usize;
+    //        Ok(())
+    //    })
+    //    .unwrap();
+    //let led_state2 = Arc::clone(&led_state);
+    //server
+    //    .fn_handler("/animation", Method::Post, move |mut req| {
+    //        let len = req.content_len().unwrap_or(0) as usize;
 
-            let mut led_state2 = led_state2.lock().unwrap();
-            if len > MAX_LEN {
-                req.into_status_response(413)?
-                    .write_all("Request too big".as_bytes())?;
-                return Ok(());
-            }
+    //        let mut led_state2 = led_state2.lock().unwrap();
+    //        if len > MAX_LEN {
+    //            req.into_status_response(413)?
+    //                .write_all("Request too big".as_bytes())?;
+    //            return Ok(());
+    //        }
 
-            let mut buf = vec![0; len];
-            req.read_exact(&mut buf)?;
-            let mut resp = req.into_ok_response()?;
+    //        let mut buf = vec![0; len];
+    //        req.read_exact(&mut buf)?;
+    //        let mut resp = req.into_ok_response()?;
 
-            if let Ok(form) = serde_json::from_slice::<FormDataAnimation>(&buf) {
-                match form.animation {
-                    "rainbow" => {
-                        *led_state2 = led_state2.set_animation(Rainbow);
-                    }
-                    "rainbow-slide" => {
-                        *led_state2 = led_state2.set_animation(RainbowSlide);
-                    }
-                    _ => {
-                        *led_state2 = led_state2.set_off();
-                    }
-                }
+    //        if let Ok(form) = serde_json::from_slice::<FormDataAnimation>(&buf) {
+    //            match form.animation {
+    //                "rainbow" => {
+    //                    *led_state2 = led_state2.set_animation(Rainbow);
+    //                }
+    //                "rainbow-slide" => {
+    //                    *led_state2 = led_state2.set_animation(RainbowSlide);
+    //                }
+    //                _ => {
+    //                    *led_state2 = led_state2.set_off();
+    //                }
+    //            }
 
-                write!(resp, "Hello, {}", form.animation)?;
-            } else {
-                resp.write_all("JSON error".as_bytes())?;
-            }
+    //            write!(resp, "Hello, {}", form.animation)?;
+    //        } else {
+    //            resp.write_all("JSON error".as_bytes())?;
+    //        }
 
-            Ok(())
-        })
-        .unwrap();
+    //        Ok(())
+    //    })
+    //    .unwrap();
 
-    let stop = unsafe { Arc::new(Mutex::new(&mut FLAG)) };
-    struct DummyA {}
-    impl Animation for DummyA {}
-    let s_handler = Arc::clone(&stop);
-    let m = Arc::new(Mutex::new(Matrix::new()));
-    let leds2 = Arc::clone(&led_matrix);
-    let m_handler = Arc::clone(&m);
+    let _ = Matrix::new()
+        .animation(Box::new(RandomAnimation::default()))
+        .run();
+
+    //let leds2 = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
 
-            //**s_handler.lock().unwrap() = false;
-            let mut m = m_handler.lock().unwrap();
-            m.set(Box::new(DummyA {}));
-            m.run();
+            matrix::update(Box::new(RandomAnimation::default()));
 
             if len > MAX_LEN {
                 req.into_status_response(413)?
@@ -201,23 +196,23 @@ fn main() -> ! {
             req.read_exact(&mut buf)?;
             let mut resp = req.into_ok_response()?;
 
-            if let Ok(form) = serde_json::from_slice::<FormData>(&buf) {
-                let mut leds2 = leds2.lock().unwrap();
-                let pixels = form.pixels.split(',');
-                pixels.enumerate().for_each(|(i, pixel)| {
-                    let x = (i % 5) as u8;
-                    let y = (i / 5) as u8;
-                    let color = hex::decode(pixel.strip_prefix('#').unwrap())
-                        .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
-                        .unwrap();
-                    leds2.set_pixel(x, y, color);
-                });
-                leds2.write_pixels();
-                sleep(Duration::from_millis(1000));
-                write!(resp, "Hello, {} Color:{}", form.pixels, form.color)?;
-            } else {
-                resp.write_all("JSON error".as_bytes())?;
-            }
+            //if let Ok(form) = serde_json::from_slice::<FormData>(&buf) {
+            //    let mut leds2 = leds2.lock().unwrap();
+            //    let pixels = form.pixels.split(',');
+            //    pixels.enumerate().for_each(|(i, pixel)| {
+            //        let x = (i % 5) as u8;
+            //        let y = (i / 5) as u8;
+            //        let color = hex::decode(pixel.strip_prefix('#').unwrap())
+            //            .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
+            //            .unwrap();
+            //        leds2.set_pixel(x, y, color);
+            //    });
+            //    leds2.write_pixels();
+            //    sleep(Duration::from_millis(1000));
+            //    write!(resp, "Hello, {} Color:{}", form.pixels, form.color)?;
+            //} else {
+            //    resp.write_all("JSON error".as_bytes())?;
+            //}
 
             Ok(())
         })
@@ -226,13 +221,13 @@ fn main() -> ! {
     println!("Server awaiting connection");
 
     loop {
-        let led_matrix = Arc::clone(&led_matrix);
-        let mut led_matrix = led_matrix.lock().unwrap();
+        //let led_matrix = Arc::clone(&led_matrix);
+        //let mut led_matrix = led_matrix.lock().unwrap();
 
-        let led_state = Arc::clone(&led_state);
-        let mut led_state = led_state.lock().unwrap();
+        //let led_state = Arc::clone(&led_state);
+        //let mut led_state = led_state.lock().unwrap();
 
-        *led_state = led_state.deref_mut().tick(led_matrix.deref_mut());
+        //*led_state = led_state.deref_mut().tick(led_matrix.deref_mut());
         sleep(Duration::from_millis(1));
     }
 }

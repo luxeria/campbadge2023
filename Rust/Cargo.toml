@@ -4,7 +4,8 @@ resolver = "2"
 members = [
     "examples/Advanced",
     "examples/Simple",
-    "crates/lux-camp-badge"
+    "crates/lux-camp-badge",
+    "crates/lux-camp-badge-animations"
 ]
 
 [profile.release]

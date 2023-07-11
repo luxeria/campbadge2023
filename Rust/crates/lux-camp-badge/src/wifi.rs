@@ -16,6 +16,7 @@ pub fn connect(
     if ssid.is_empty() {
         bail!("Missing WiFi name")
     }
+    info!("Attempting WiFi connection with network '{ssid}'");
     if pass.is_empty() {
         auth_method = AuthMethod::None;
         info!("Wifi password is empty");
