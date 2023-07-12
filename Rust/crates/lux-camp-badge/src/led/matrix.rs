@@ -1,12 +1,12 @@
 #![allow(clippy::type_complexity)] // This only applies to internal types.
 
-/// Generic, performant, panic-free* and thread-safe implementation over an LED matrix:
-///
-/// * Correct usage should be guaranteed at compile time.
-/// * Animations are abstracted via the [Animation] trait of this crate.
-/// * LED backends (drivers) are abstracted via the `SmartLedsWrite` from the `smart_leds_trait` crate
-///
-/// \* Ultimately depends on the backend and animation implementations.
+//! Generic, performant, panic-free* and thread-safe implementation over an LED matrix:
+//!
+//! * Correct usage should be guaranteed at compile time.
+//! * Animations are abstracted via the [Animation] trait of this crate.
+//! * LED backends (drivers) are abstracted via the `SmartLedsWrite` from the `smart_leds_trait` crate
+//!
+//! \* Ultimately depends on the backend and animation implementations.
 use esp_idf_svc::systime::EspSystemTime;
 use lazy_static::lazy_static;
 use smart_leds_trait::SmartLedsWrite;
