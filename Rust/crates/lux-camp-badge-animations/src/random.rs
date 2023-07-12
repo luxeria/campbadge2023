@@ -1,15 +1,20 @@
-use esp_idf_svc::systime::EspSystemTime;
 use lux_camp_badge::led::{Animation, MatrixConfig};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
 
-/// In a (pseudo) random interval of max. 1 second,
-/// color exactly one pixel with a (psuedo) random color.
-pub struct RandomAnimation(Duration);
+/// Every 250ms, each pixel has a 30% chance of getting colored randomly.
+pub struct RandomAnimation {
+    last_tick: Duration,
+    rng: SmallRng,
+}
 
 impl Default for RandomAnimation {
     fn default() -> Self {
-        Self(EspSystemTime {}.now())
+        Self {
+            last_tick: Duration::ZERO,
+            rng: SmallRng::seed_from_u64(123),
+        }
     }
 }
 
@@ -20,22 +25,18 @@ where
     fn update(
         &mut self,
         tick: Duration,
-    ) -> Option<Vec<<<C as MatrixConfig>::Backend as smart_leds_trait::SmartLedsWrite>::Color>>
-    {
-        let interval = Duration::from_millis(tick.as_micros() as u64 % 1000);
-        if self.0 + interval > tick {
-            return None;
+    ) -> Option<Vec<<<C as MatrixConfig>::Backend as SmartLedsWrite>::Color>> {
+        crate::wait_at_least(Duration::from_millis(250), self.last_tick, tick)?;
+        self.last_tick = tick;
+
+        let mut buf = Vec::with_capacity(<C as MatrixConfig>::AREA);
+        for _ in 0..<C as MatrixConfig>::AREA {
+            buf.push(if self.rng.gen_bool(0.3) {
+                RGB8::new(self.rng.gen(), self.rng.gen(), self.rng.gen())
+            } else {
+                RGB8::new(0, 0, 0)
+            })
         }
-        self.0 = tick;
-
-        let mut buf = vec![RGB8::new(0, 0, 0); <C as MatrixConfig>::AREA];
-        let seed = self.0.as_micros() as u64;
-        buf[seed as usize % <C as MatrixConfig>::AREA] = RGB8::new(
-            ((seed + interval.as_micros() as u64) % 255) as u8,
-            (seed % 255) as u8,
-            ((seed - 122) % 255) as u8,
-        );
-
-        buf.into()
+        Some(buf)
     }
 }

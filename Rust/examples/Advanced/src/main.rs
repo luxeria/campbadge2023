@@ -5,10 +5,9 @@ use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_sys::{self as _, CONFIG_GARP_TMR_INTERVAL}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use log::*;
 use lux_camp_badge::led::matrix::{self, Matrix};
-use lux_camp_badge::led::matrix::{
-    Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState,
-};
+use lux_camp_badge::led::matrix::{Animations::RainbowSlide, LedMatrix, LedState};
 use lux_camp_badge::led::{Animation, MatrixConfig};
+use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
 use lux_camp_badge_animations::random::RandomAnimation;
 use smart_leds::RGB8;
 use std::ops::DerefMut;
@@ -186,13 +185,29 @@ fn main() -> ! {
     let handle = Matrix::<LuxBadge, _>::new()
         .animation::<LuxBadge>(Box::new(RandomAnimation::default()))
         .run(Ws2812Esp32Rmt::new(led_channel, led_pin).unwrap());
-    //let mut handler_interactive = Arc::clone(&handle);
 
+    let h = Arc::clone(&handle);
+    server
+        .fn_handler("/fading", Method::Get, move |request| {
+            matrix::update(&h, Box::new(FadingRainbow::new(1, None)));
+            let mut response = request.into_ok_response().unwrap();
+            response.write_all(INDEX_HTML.as_bytes())?;
+            Ok(())
+        })
+        .unwrap();
+    let h = Arc::clone(&handle);
+    server
+        .fn_handler("/sliding", Method::Get, move |request| {
+            matrix::update(&h, Box::new(SlidingRainbow::new(5, None)));
+            let mut response = request.into_ok_response().unwrap();
+            response.write_all(INDEX_HTML.as_bytes())?;
+            Ok(())
+        })
+        .unwrap();
     //let leds2 = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
-            let animation = Box::new(RandomAnimation::default());
-            matrix::update(&handle, animation);
+            matrix::update(&handle, Box::new(RandomAnimation::default()));
 
             let len = req.content_len().unwrap_or(0) as usize;
 

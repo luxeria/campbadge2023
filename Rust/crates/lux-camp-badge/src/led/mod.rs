@@ -1,10 +1,8 @@
 use std::time::Duration;
 
-use smart_leds_trait::{SmartLedsWrite, RGB};
+use smart_leds_trait::SmartLedsWrite;
 
 pub mod matrix;
-
-//pub type FrameBuf = Vec<RGB<u8>>;
 
 pub trait MatrixConfig: 'static {
     const X: usize;
