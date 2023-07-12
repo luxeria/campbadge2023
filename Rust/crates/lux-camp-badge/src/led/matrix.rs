@@ -13,7 +13,7 @@ use ws2812_esp32_rmt_driver::{Ws2812Esp32Rmt, RGB8};
 
 pub use self::state::AnimationSet;
 
-use super::{Animation, FrameBuf, MatrixConfig};
+use super::{Animation, MatrixConfig};
 
 lazy_static! {
     static ref STOP: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
@@ -140,7 +140,7 @@ impl LedState {
 pub struct LedMatrix {
     led_rows: usize,
     led_columns: usize,
-    pixels: FrameBuf,
+    pixels: Vec<RGB8>,
     ws2812: Ws2812Esp32Rmt,
     _state: LedState,
 }
@@ -178,12 +178,39 @@ impl LedMatrix {
     }
 }
 
+impl SmartLedsWrite for LedMatrix {
+    type Error = ();
+    type Color = RGB8;
+
+    fn write<T, I>(&mut self, iterator: T) -> Result<(), Self::Error>
+    where
+        T: Iterator<Item = I>,
+        I: Into<Self::Color>,
+    {
+        self.ws2812.write(iterator).unwrap();
+        Ok(())
+    }
+}
+
 /// Type states for the [MatrixBuilder].
 mod state {
     /// Represents a builder state where the animation is set.
     pub struct AnimationSet;
 }
 
+pub struct DummyBackend;
+impl SmartLedsWrite for DummyBackend {
+    type Error = ();
+    type Color = ();
+
+    fn write<T, I>(&mut self, iterator: T) -> Result<(), Self::Error>
+    where
+        T: Iterator<Item = I>,
+        I: Into<Self::Color>,
+    {
+        Ok(())
+    }
+}
 pub struct Missing<State>(PhantomData<fn() -> State>);
 #[derive(Clone)]
 pub struct DummyConfig;
@@ -191,6 +218,7 @@ impl MatrixConfig for DummyConfig {
     const X: usize = 0;
     const Y: usize = 0;
     const AREA: usize = 0;
+    type Backend = DummyBackend;
 }
 impl crate::led::Animation<DummyConfig> for () {}
 
@@ -198,23 +226,11 @@ impl crate::led::Animation<DummyConfig> for () {}
 #[must_use]
 pub struct MatrixBuilder<S: MatrixConfig, AnimationState> {
     animation: Box<dyn Animation<S> + Send>,
-    led_pin: u32,
-    led_channel: u8,
     fps: u8,
     marker: PhantomData<fn() -> AnimationState>,
 }
 
 impl<S: MatrixConfig, A> MatrixBuilder<S, A> {
-    pub fn led_pin(mut self, no: u32) -> Self {
-        self.led_pin = no;
-        self
-    }
-
-    pub fn led_channel(mut self, no: u8) -> Self {
-        self.led_channel = no;
-        self
-    }
-
     pub fn fps(mut self, n: u8) -> Self {
         self.fps = n;
         self
@@ -231,29 +247,22 @@ impl<S: MatrixConfig> MatrixBuilder<S, Missing<AnimationSet>> {
     {
         MatrixBuilder {
             animation,
-            led_channel: self.led_channel,
-            led_pin: self.led_pin,
             fps: self.fps,
             marker: PhantomData,
         }
     }
 }
 
-impl<S: MatrixConfig> MatrixBuilder<S, AnimationSet> {
+impl<S: MatrixConfig<Backend = B>, B: SmartLedsWrite + Send + 'static>
+    MatrixBuilder<S, AnimationSet>
+{
     /// Start the matrix in another thread.
     ///
     /// If there is already another instance running, the other instance will be stopped.
-    pub fn run(self) -> Arc<Mutex<Option<Handle<S>>>> {
-        let led_matrix = LedMatrix::new(
-            self.led_pin,
-            self.led_channel,
-            <S as MatrixConfig>::X,
-            <S as MatrixConfig>::Y,
-        );
-
+    pub fn run(self, backend: B) -> Arc<Mutex<Option<Handle<S, B>>>> {
         let mut matrix = Matrix {
             animation: self.animation,
-            led_matrix,
+            backend,
             frame_time: Duration::from_millis(1000 / self.fps as u64),
             tick: EspSystemTime {}.now(),
         };
@@ -262,14 +271,14 @@ impl<S: MatrixConfig> MatrixBuilder<S, AnimationSet> {
     }
 }
 
-pub struct Matrix<S: MatrixConfig> {
+pub struct Matrix<S: MatrixConfig<Backend = B>, B: SmartLedsWrite + Send> {
     animation: Box<dyn Animation<S> + Send>,
-    led_matrix: LedMatrix,
+    backend: B,
     frame_time: Duration,
     tick: Duration,
 }
 
-impl<S: MatrixConfig> Matrix<S> {
+impl<S: MatrixConfig<Backend = B>, B: SmartLedsWrite + Send + 'static> Matrix<S, B> {
     /// Creates a new [MatrixBuilder] with the following defaults:
     /// * `led_pin`: 10
     /// * `led_channel`: 0
@@ -277,8 +286,6 @@ impl<S: MatrixConfig> Matrix<S> {
     pub fn new() -> MatrixBuilder<DummyConfig, Missing<AnimationSet>> {
         MatrixBuilder {
             animation: Box::new(()),
-            led_pin: 10,
-            led_channel: 0,
             fps: 24,
             marker: PhantomData,
         }
@@ -286,7 +293,7 @@ impl<S: MatrixConfig> Matrix<S> {
 
     fn init_animation(&mut self) {
         if let Some(pixels) = self.animation.init() {
-            self.draw(&pixels);
+            self.draw(pixels);
         }
     }
 
@@ -295,16 +302,14 @@ impl<S: MatrixConfig> Matrix<S> {
         self.init_animation();
     }
 
-    fn draw(&mut self, pixels: &FrameBuf) {
-        for x in 0..self.led_matrix.led_columns {
-            for y in 0..self.led_matrix.led_rows {
-                let idx = (x * self.led_matrix.led_columns) + y;
-                self.led_matrix.set_pixel(x, y, pixels[idx as usize])
-            }
-        }
+    fn draw<I>(&mut self, pixels: I)
+    where
+        I: IntoIterator<Item = <B as SmartLedsWrite>::Color>,
+    {
+        self.backend.write(pixels.into_iter());
     }
 
-    fn run(mut self) -> JoinHandle<Matrix<S>> {
+    fn run(mut self) -> JoinHandle<Matrix<S, B>> {
         std::thread::spawn(|| loop {
             self.tick = EspSystemTime {}.now();
 
@@ -313,8 +318,7 @@ impl<S: MatrixConfig> Matrix<S> {
             }
 
             if let Some(pixels) = self.animation.update(self.tick) {
-                self.draw(&pixels);
-                self.led_matrix.write_pixels();
+                self.draw(pixels);
             }
 
             std::thread::sleep(self.frame_time - (EspSystemTime {}.now() - self.tick));
@@ -322,10 +326,10 @@ impl<S: MatrixConfig> Matrix<S> {
     }
 }
 
-pub struct Handle<S: MatrixConfig>(JoinHandle<Matrix<S>>);
+pub struct Handle<S: MatrixConfig<Backend = B>, B: SmartLedsWrite + Send>(JoinHandle<Matrix<S, B>>);
 
-impl<S: MatrixConfig> Handle<S> {
-    fn start(mut matrix: Matrix<S>) -> Self {
+impl<S: MatrixConfig<Backend = B>, B: SmartLedsWrite + Send + 'static> Handle<S, B> {
+    fn start(mut matrix: Matrix<S, B>) -> Self {
         *STOP.lock().unwrap() = false;
         matrix.init_animation();
         Self(matrix.run())
@@ -339,15 +343,18 @@ impl<S: MatrixConfig> Handle<S> {
     }
 
     /// Stop the matrix and return the underlying instance if it was running.
-    fn stop(self) -> Matrix<S> {
+    fn stop(self) -> Matrix<S, B> {
         *STOP.lock().unwrap() = true;
         self.0.join().unwrap()
     }
 }
 
-pub fn update<S>(handle: &Arc<Mutex<Option<Handle<S>>>>, animation: Box<dyn Animation<S> + Send>)
-where
-    S: MatrixConfig,
+pub fn update<B, S>(
+    handle: &Arc<Mutex<Option<Handle<S, B>>>>,
+    animation: Box<dyn Animation<S> + Send>,
+) where
+    B: SmartLedsWrite + Send + 'static,
+    S: MatrixConfig<Backend = B>,
 {
     let mut handle = handle.lock().unwrap();
     if let Some(inner) = handle.take() {

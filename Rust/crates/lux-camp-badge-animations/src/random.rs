@@ -1,6 +1,6 @@
 use esp_idf_svc::systime::EspSystemTime;
-use lux_camp_badge::led::{Animation, FrameBuf, MatrixConfig};
-use smart_leds_trait::RGB8;
+use lux_camp_badge::led::{Animation, MatrixConfig};
+use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
 
 /// In a (pseudo) random interval of max. 1 second,
@@ -13,8 +13,15 @@ impl Default for RandomAnimation {
     }
 }
 
-impl<C: MatrixConfig> Animation<C> for RandomAnimation {
-    fn update(&mut self, tick: Duration) -> Option<FrameBuf> {
+impl<B, C: MatrixConfig<Backend = B>> Animation<C> for RandomAnimation
+where
+    B: SmartLedsWrite<Color = RGB8>,
+{
+    fn update(
+        &mut self,
+        tick: Duration,
+    ) -> Option<Vec<<<C as MatrixConfig>::Backend as smart_leds_trait::SmartLedsWrite>::Color>>
+    {
         let interval = Duration::from_millis(tick.as_micros() as u64 % 1000);
         if self.0 + interval > tick {
             return None;

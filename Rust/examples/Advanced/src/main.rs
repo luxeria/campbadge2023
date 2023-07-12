@@ -8,13 +8,14 @@ use lux_camp_badge::led::matrix::{self, Matrix};
 use lux_camp_badge::led::matrix::{
     Animations::Rainbow, Animations::RainbowSlide, LedMatrix, LedState,
 };
-use lux_camp_badge::led::{Animation, FrameBuf, MatrixConfig};
+use lux_camp_badge::led::{Animation, MatrixConfig};
 use lux_camp_badge_animations::random::RandomAnimation;
 use smart_leds::RGB8;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
+use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
 use embedded_svc::http::Headers;
 use embedded_svc::io::Read;
@@ -62,8 +63,8 @@ fn main() -> ! {
     esp_idf_svc::log::EspLogger::initialize_default();
     let _nvs = EspDefaultNvsPartition::take().unwrap();
 
-    //let led_pin = 10;
-    //let led_channel = 0;
+    let led_pin = 10;
+    let led_channel = 0;
     //let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5)));
 
     //let led_state = Arc::new(Mutex::new(LedState::default()));
@@ -175,25 +176,25 @@ fn main() -> ! {
     //    })
     //    .unwrap();
 
-    #[derive(Clone)]
-    struct Size;
-    impl MatrixConfig for Size {
+    struct LuxBadge;
+    impl MatrixConfig for LuxBadge {
         const AREA: usize = 25;
         const X: usize = 5;
         const Y: usize = 5;
+        type Backend = Ws2812Esp32Rmt;
     }
-    let handle = Matrix::<Size>::new()
-        .animation::<Size>(Box::new(RandomAnimation::default()))
-        .run();
+    let handle = Matrix::<LuxBadge, _>::new()
+        .animation::<LuxBadge>(Box::new(RandomAnimation::default()))
+        .run(Ws2812Esp32Rmt::new(led_channel, led_pin).unwrap());
     //let mut handler_interactive = Arc::clone(&handle);
 
     //let leds2 = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
-            let len = req.content_len().unwrap_or(0) as usize;
-
             let animation = Box::new(RandomAnimation::default());
             matrix::update(&handle, animation);
+
+            let len = req.content_len().unwrap_or(0) as usize;
 
             if len > MAX_LEN {
                 req.into_status_response(413)?
