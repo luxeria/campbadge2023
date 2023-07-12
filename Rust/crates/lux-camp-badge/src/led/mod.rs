@@ -4,7 +4,7 @@ use smart_leds_trait::SmartLedsWrite;
 
 pub mod matrix;
 
-/// This configuration trait describes the LED matrix being used.
+/// Configuration trait describing the LED matrix being used.
 pub trait MatrixConfig: 'static {
     /// The X dimension of the matrix
     const X: usize;
@@ -18,6 +18,12 @@ pub trait MatrixConfig: 'static {
     type Backend: SmartLedsWrite;
 }
 
+/// Trait for implementing animations that can run on a variety of LED matrices.
+///
+/// State should be stored in `self`, where as properties of the LED matrix can be found
+/// on the [MatrixConfig] type.
+///
+/// Many examples can be found in the `lux-camp-badge-animations` crate.
 pub trait Animation<C: MatrixConfig> {
     /// Initialization function for your Animation. The output of it will be drawed
     /// whenever this animation is loaded.
