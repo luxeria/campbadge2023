@@ -1,34 +1,41 @@
 #![feature(str_split_remainder)]
 
+use embedded_svc::http::Headers;
+use embedded_svc::io::Read;
+use embedded_svc::{http::Method, io::Write};
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_svc::systime::EspSystemTime;
-use esp_idf_sys::{self as _, CONFIG_GARP_TMR_INTERVAL}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use log::*;
-use lux_camp_badge::led::matrix::{self, Matrix};
-use lux_camp_badge::led::matrix::{Animations::RainbowSlide, LedMatrix, LedState};
+use esp_idf_svc::wifi::EspWifi;
+use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+use lux_camp_badge::led::matrix::{self, Handle, Matrix};
 use lux_camp_badge::led::{Animation, MatrixConfig};
 use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
 use lux_camp_badge_animations::random::RandomAnimation;
+use lux_camp_badge_animations::static_scene::Scene;
+use serde::Deserialize;
 use smart_leds::RGB8;
-use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
-use embedded_svc::http::Headers;
-use embedded_svc::io::Read;
-use embedded_svc::{http::Method, io::Write};
-
-use esp_idf_svc::nvs::EspDefaultNvsPartition;
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvsPartition, NvsDefault};
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     http::server::{Configuration, EspHttpServer},
 };
 
-static INDEX_HTML: &str = include_str!("json_post_handler.html");
+/// Configuration of our LED matrix
+struct LuxBadge;
+impl MatrixConfig for LuxBadge {
+    const AREA: usize = 25;
+    const X: usize = 5;
+    const Y: usize = 5;
+    type Backend = Ws2812Esp32Rmt;
+}
 
-use serde::Deserialize;
+const LED_PIN: u32 = 10;
+const LED_CHANNEL: u8 = 0;
+static INDEX_HTML: &str = include_str!("json_post_handler.html");
 
 #[toml_cfg::toml_config]
 pub struct Config {
@@ -40,39 +47,39 @@ pub struct Config {
 
 // Max payload length
 const MAX_LEN: usize = 1024;
+
 #[derive(Deserialize)]
 struct FormData<'a> {
     color: &'a str,
     pixels: &'a str,
 }
+
 #[derive(Deserialize)]
 struct FormDataMode<'a> {
     mode: &'a str,
 }
+
 #[derive(Deserialize)]
 struct FormDataAnimation<'a> {
     animation: &'a str,
 }
 
-fn main() -> ! {
+#[derive(Copy, Clone)]
+pub enum Animations {
+    Rainbow,
+    RainbowSlide,
+}
+
+fn init() -> EspNvsPartition<NvsDefault> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_sys::link_patches();
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
-    let _nvs = EspDefaultNvsPartition::take().unwrap();
+    EspDefaultNvsPartition::take().unwrap()
+}
 
-    let led_pin = 10;
-    let led_channel = 0;
-    //let led_matrix = Arc::new(Mutex::new(LedMatrix::new(led_pin, led_channel, 5)));
-
-    //let led_state = Arc::new(Mutex::new(LedState::default()));
-    //let leds = Arc::clone(&led_matrix);
-    //let mut leds = leds.lock().unwrap();
-    //leds.set_all_pixel(RGB8::new(25, 0, 0));
-    //leds.write_pixels();
-    info!("Hello, world!");
-
+fn connect_wifi() -> Box<EspWifi<'static>> {
     let peripherals = Peripherals::take().unwrap();
     let sysloop = EspSystemEventLoop::take().unwrap();
 
@@ -80,19 +87,20 @@ fn main() -> ! {
     let app_config = CONFIG;
 
     // Connect to the Wi-Fi network
-    let _wifi = lux_camp_badge::wifi::connect(
+    lux_camp_badge::wifi::connect(
         app_config.wifi_ssid,
         app_config.wifi_psk,
         peripherals.modem,
         sysloop,
     )
-    .unwrap();
-    //leds.set_all_pixel(RGB8::new(0, 25, 25));
-    //leds.write_pixels();
-    //drop(leds);
+    .unwrap()
+}
 
-    // Set the HTTP server
+fn start_web_server(
+    led_matrix: Arc<Mutex<Option<Handle<LuxBadge, Ws2812Esp32Rmt>>>>,
+) -> EspHttpServer {
     let mut server = EspHttpServer::new(&Configuration::default()).unwrap();
+
     // http://<sta ip>/ handler
     server
         .fn_handler("/", Method::Get, |request| {
@@ -101,114 +109,10 @@ fn main() -> ! {
             Ok(())
         })
         .unwrap();
-    //let led_state2 = Arc::clone(&led_state);
-    //server
-    //    .fn_handler("/mode", Method::Post, move |mut req| {
-    //        let len = req.content_len().unwrap_or(0) as usize;
 
-    //        let mut led_state2 = led_state2.lock().unwrap();
-    //        if len > MAX_LEN {
-    //            req.into_status_response(413)?
-    //                .write_all("Request too big".as_bytes())?;
-    //            return Ok(());
-    //        }
-
-    //        let mut buf = vec![0; len];
-    //        req.read_exact(&mut buf)?;
-    //        let mut resp = req.into_ok_response()?;
-
-    //        if let Ok(form) = serde_json::from_slice::<FormDataMode>(&buf) {
-    //            match form.mode {
-    //                "animation" => {
-    //                    *led_state2 = led_state2.set_animation(Rainbow);
-    //                }
-    //                "interactive" => {
-    //                    *led_state2 = led_state2.set_interactive();
-    //                }
-    //                "off" => {}
-    //                _ => {}
-    //            }
-
-    //            write!(resp, "Hello, {}", form.mode)?;
-    //        } else {
-    //            resp.write_all("JSON error".as_bytes())?;
-    //        }
-
-    //        Ok(())
-    //    })
-    //    .unwrap();
-    //let led_state2 = Arc::clone(&led_state);
-    //server
-    //    .fn_handler("/animation", Method::Post, move |mut req| {
-    //        let len = req.content_len().unwrap_or(0) as usize;
-
-    //        let mut led_state2 = led_state2.lock().unwrap();
-    //        if len > MAX_LEN {
-    //            req.into_status_response(413)?
-    //                .write_all("Request too big".as_bytes())?;
-    //            return Ok(());
-    //        }
-
-    //        let mut buf = vec![0; len];
-    //        req.read_exact(&mut buf)?;
-    //        let mut resp = req.into_ok_response()?;
-
-    //        if let Ok(form) = serde_json::from_slice::<FormDataAnimation>(&buf) {
-    //            match form.animation {
-    //                "rainbow" => {
-    //                    *led_state2 = led_state2.set_animation(Rainbow);
-    //                }
-    //                "rainbow-slide" => {
-    //                    *led_state2 = led_state2.set_animation(RainbowSlide);
-    //                }
-    //                _ => {
-    //                    *led_state2 = led_state2.set_off();
-    //                }
-    //            }
-
-    //            write!(resp, "Hello, {}", form.animation)?;
-    //        } else {
-    //            resp.write_all("JSON error".as_bytes())?;
-    //        }
-
-    //        Ok(())
-    //    })
-    //    .unwrap();
-
-    struct LuxBadge;
-    impl MatrixConfig for LuxBadge {
-        const AREA: usize = 25;
-        const X: usize = 5;
-        const Y: usize = 5;
-        type Backend = Ws2812Esp32Rmt;
-    }
-    let handle = Matrix::<LuxBadge, _>::new()
-        .animation::<LuxBadge>(Box::new(RandomAnimation::default()))
-        .run(Ws2812Esp32Rmt::new(led_channel, led_pin).unwrap());
-
-    let h = Arc::clone(&handle);
+    let h = Arc::clone(&led_matrix);
     server
-        .fn_handler("/fading", Method::Get, move |request| {
-            matrix::update(&h, Box::new(FadingRainbow::new(1, None)));
-            let mut response = request.into_ok_response().unwrap();
-            response.write_all(INDEX_HTML.as_bytes())?;
-            Ok(())
-        })
-        .unwrap();
-    let h = Arc::clone(&handle);
-    server
-        .fn_handler("/sliding", Method::Get, move |request| {
-            matrix::update(&h, Box::new(SlidingRainbow::new(5, None)));
-            let mut response = request.into_ok_response().unwrap();
-            response.write_all(INDEX_HTML.as_bytes())?;
-            Ok(())
-        })
-        .unwrap();
-    //let leds2 = Arc::clone(&led_matrix);
-    server
-        .fn_handler("/interactive", Method::Post, move |mut req| {
-            matrix::update(&handle, Box::new(RandomAnimation::default()));
-
+        .fn_handler("/mode", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
 
             if len > MAX_LEN {
@@ -221,23 +125,90 @@ fn main() -> ! {
             req.read_exact(&mut buf)?;
             let mut resp = req.into_ok_response()?;
 
-            //if let Ok(form) = serde_json::from_slice::<FormData>(&buf) {
-            //    let mut leds2 = leds2.lock().unwrap();
-            //    let pixels = form.pixels.split(',');
-            //    pixels.enumerate().for_each(|(i, pixel)| {
-            //        let x = (i % 5) as u8;
-            //        let y = (i / 5) as u8;
-            //        let color = hex::decode(pixel.strip_prefix('#').unwrap())
-            //            .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
-            //            .unwrap();
-            //        leds2.set_pixel(x, y, color);
-            //    });
-            //    leds2.write_pixels();
-            //    sleep(Duration::from_millis(1000));
-            //    write!(resp, "Hello, {} Color:{}", form.pixels, form.color)?;
-            //} else {
-            //    resp.write_all("JSON error".as_bytes())?;
-            //}
+            serde_json::from_slice::<FormDataMode>(&buf)
+                .map(|form| {
+                    let animation: Box<dyn Animation<LuxBadge> + Send + 'static> = match form.mode {
+                        "animation" => Box::new(SlidingRainbow::new(4, None)),
+                        "interactive" | "off" => Box::new(Scene(vec![
+                        RGB8::new(0, 0, 0);
+                        <LuxBadge as MatrixConfig>::AREA
+                    ])),
+                        _ => return Ok(()),
+                    };
+                    matrix::update(&h, animation).unwrap();
+                    write!(resp, "Hello, {}", form.mode)
+                })
+                .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
+
+            Ok(())
+        })
+        .unwrap();
+
+    let h = Arc::clone(&led_matrix);
+    server
+        .fn_handler("/animation", Method::Post, move |mut req| {
+            let len = req.content_len().unwrap_or(0) as usize;
+
+            if len > MAX_LEN {
+                req.into_status_response(413)?
+                    .write_all("Request too big".as_bytes())?;
+                return Ok(());
+            }
+
+            let mut buf = vec![0; len];
+            req.read_exact(&mut buf)?;
+            let mut resp = req.into_ok_response()?;
+
+            serde_json::from_slice::<FormDataAnimation>(&buf)
+                .map(|form| {
+                    let animation: Box<dyn Animation<LuxBadge> + Send + 'static> =
+                        match form.animation {
+                            "rainbow" => Box::new(FadingRainbow::new(1, None)),
+                            "rainbow-slide" => Box::new(SlidingRainbow::new(5, None)),
+                            "random" => Box::<RandomAnimation>::default(),
+                            _ => Box::new(Scene(vec![
+                                RGB8::new(0, 0, 0);
+                                <LuxBadge as MatrixConfig>::AREA
+                            ])),
+                        };
+                    matrix::update(&h, animation).unwrap();
+                    write!(resp, "Displaying {}", form.animation)
+                })
+                .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
+
+            Ok(())
+        })
+        .unwrap();
+
+    server
+        .fn_handler("/interactive", Method::Post, move |mut req| {
+            let len = req.content_len().unwrap_or(0) as usize;
+
+            if len > MAX_LEN {
+                req.into_status_response(413)?
+                    .write_all("Request too big".as_bytes())?;
+                return Ok(());
+            }
+
+            let mut buf = vec![0; len];
+            req.read_exact(&mut buf)?;
+            let mut resp = req.into_ok_response()?;
+
+            serde_json::from_slice::<FormData>(&buf)
+                .map(|form| {
+                    let pixels = form
+                        .pixels
+                        .split(',')
+                        .map(|pixel| {
+                            hex::decode(pixel.strip_prefix('#').unwrap())
+                                .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
+                                .unwrap()
+                        })
+                        .collect();
+                    matrix::update(&led_matrix, Box::new(Scene(pixels))).unwrap();
+                    write!(resp, "Hello, {} Color:{}", form.pixels, form.color)
+                })
+                .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
 
             Ok(())
         })
@@ -245,14 +216,21 @@ fn main() -> ! {
 
     println!("Server awaiting connection");
 
+    server
+}
+
+fn main() -> ! {
+    let _nvs = init();
+    let _wifi = connect_wifi();
+
+    // Setup HTTP server and LED matrix
+    let led_matrix = Matrix::<LuxBadge, _>::new()
+        .animation::<LuxBadge>(Box::<RandomAnimation>::default())
+        .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())
+        .unwrap();
+    let _server = start_web_server(led_matrix);
+
     loop {
-        //let led_matrix = Arc::clone(&led_matrix);
-        //let mut led_matrix = led_matrix.lock().unwrap();
-
-        //let led_state = Arc::clone(&led_state);
-        //let mut led_state = led_state.lock().unwrap();
-
-        //*led_state = led_state.deref_mut().tick(led_matrix.deref_mut());
-        sleep(Duration::from_millis(1));
+        sleep(Duration::from_secs(1));
     }
 }

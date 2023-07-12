@@ -2,6 +2,7 @@ use std::time::Duration;
 
 pub mod rainbow;
 pub mod random;
+pub mod static_scene;
 
 /// Check if `now` is more than `amount` after `since`.
 /// Useful helper if you only want to draw at for example every N milliseconds.
