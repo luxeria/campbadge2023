@@ -1,0 +1,7 @@
+.embuild/
+/.vscode
+/.embuild
+/.idea
+/target
+/Cargo.lock
+/cfg.toml
