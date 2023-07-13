@@ -16,6 +16,7 @@ use smart_leds::RGB8;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
+use esp_idf_hal::gpio::PinDriver;
 use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvsPartition, NvsDefault};
@@ -33,7 +34,7 @@ impl MatrixConfig for LuxBadge {
     type Backend = Ws2812Esp32Rmt;
 }
 
-const LED_PIN: u32 = 10;
+const LED_PIN: u32 = 1;
 const LED_CHANNEL: u8 = 0;
 static INDEX_HTML: &str = include_str!("json_post_handler.html");
 
@@ -222,6 +223,10 @@ fn start_web_server(
 fn main() -> ! {
     let _nvs = init();
     let _wifi = connect_wifi();
+
+    let peripherals = Peripherals::take().unwrap();
+    let mut vcc_pin = PinDriver::output(peripherals.pins.gpio0).unwrap();
+    vcc_pin.set_high().unwrap();
 
     // Setup HTTP server and LED matrix
     let led_matrix = Matrix::<LuxBadge, _>::new()

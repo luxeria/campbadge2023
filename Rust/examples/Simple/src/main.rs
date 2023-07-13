@@ -13,6 +13,8 @@ use smart_leds::RGB8;
 
 use std::thread::sleep;
 use std::time::Duration;
+use esp_idf_hal::gpio;
+use esp_idf_hal::gpio::PinDriver;
 
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
@@ -25,8 +27,13 @@ fn main() -> ! {
     esp_idf_svc::log::EspLogger::initialize_default();
     let _nvs = EspDefaultNvsPartition::take().unwrap();
 
-    let led_pin = 10;
+    let led_pin = 1;
     let led_channel = 0;
+
+    let peripherals = Peripherals::take().unwrap();
+    let mut vcc_pin = PinDriver::output(peripherals.pins.gpio0).unwrap();
+    vcc_pin.set_high().unwrap();
+
     let mut leds = LedMatrix::new(led_pin, led_channel, 5, 5);
 
     let mut led_state = LedState::new();
@@ -35,7 +42,6 @@ fn main() -> ! {
     leds.write_pixels();
     info!("Hello, world!");
 
-    let _peripherals = Peripherals::take().unwrap();
     let _sysloop = EspSystemEventLoop::take().unwrap();
 
     leds.set_all_pixel(RGB8::new(0, 25, 25));
