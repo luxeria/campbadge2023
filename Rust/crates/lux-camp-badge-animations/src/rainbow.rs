@@ -1,4 +1,4 @@
-use lux_camp_badge::led::{Animation, MatrixConfig};
+use lux_camp_badge::led::{Animation, LedMatrix};
 use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
@@ -30,14 +30,14 @@ impl FadingRainbow {
     }
 }
 
-impl<B, C: MatrixConfig<Backend = B>> Animation<C> for FadingRainbow
+impl<B, C: LedMatrix<Backend = B>> Animation<C> for FadingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(
         &mut self,
         tick: Duration,
-    ) -> Option<Vec<<<C as MatrixConfig>::Backend as SmartLedsWrite>::Color>> {
+    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
         if let Some(amount) = self.0.fading_speed {
             crate::wait_at_least(amount, self.0.last_tick, tick)?;
         }
@@ -50,7 +50,7 @@ where
             sat: 255,
             val: 25,
         };
-        Some(vec![hsv2rgb(hsv); <C as MatrixConfig>::AREA])
+        Some(vec![hsv2rgb(hsv); <C as LedMatrix>::AREA])
     }
 }
 
@@ -63,14 +63,14 @@ impl SlidingRainbow {
     }
 }
 
-impl<B, C: MatrixConfig<Backend = B>> Animation<C> for SlidingRainbow
+impl<B, C: LedMatrix<Backend = B>> Animation<C> for SlidingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(
         &mut self,
         tick: Duration,
-    ) -> Option<Vec<<<C as MatrixConfig>::Backend as SmartLedsWrite>::Color>> {
+    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
         if let Some(amount) = self.0.fading_speed {
             crate::wait_at_least(amount, self.0.last_tick, tick)?;
         }
@@ -78,8 +78,8 @@ where
         self.0.last_tick = tick;
         self.0.hue += self.0.step_size;
 
-        let mut buf = Vec::with_capacity(<C as MatrixConfig>::AREA);
-        for n in 0..<C as MatrixConfig>::AREA {
+        let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
+        for n in 0..<C as LedMatrix>::AREA {
             buf.push(hsv2rgb(Hsv {
                 hue: self.0.hue + (n as u8 * self.0.step_size),
                 sat: 255,

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-pub mod rainbow;
-pub mod random;
+//pub mod rainbow;
+//pub mod random;
 pub mod static_scene;
 
 /// Check if `now` is more than `amount` after `since`.

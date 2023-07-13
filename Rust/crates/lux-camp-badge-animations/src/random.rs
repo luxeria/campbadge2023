@@ -1,4 +1,4 @@
-use lux_camp_badge::led::{Animation, MatrixConfig};
+use lux_camp_badge::led::{Animation, LedMatrix};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
@@ -18,19 +18,19 @@ impl Default for RandomAnimation {
     }
 }
 
-impl<B, C: MatrixConfig<Backend = B>> Animation<C> for RandomAnimation
+impl<B, C: LedMatrix<Backend = B>> Animation<C> for RandomAnimation
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(
         &mut self,
         tick: Duration,
-    ) -> Option<Vec<<<C as MatrixConfig>::Backend as SmartLedsWrite>::Color>> {
+    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
         crate::wait_at_least(Duration::from_millis(250), self.last_tick, tick)?;
         self.last_tick = tick;
 
-        let mut buf = Vec::with_capacity(<C as MatrixConfig>::AREA);
-        for _ in 0..<C as MatrixConfig>::AREA {
+        let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
+        for _ in 0..<C as LedMatrix>::AREA {
             buf.push(if self.rng.gen_bool(0.3) {
                 RGB8::new(self.rng.gen(), self.rng.gen(), self.rng.gen())
             } else {

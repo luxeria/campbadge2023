@@ -5,17 +5,41 @@ use smart_leds_trait::SmartLedsWrite;
 pub mod matrix;
 
 /// Configuration trait describing the LED matrix being used.
-pub trait MatrixConfig: 'static {
+///
+/// Types implementing this trait want to use an internal framebuffer.
+/// Each LED matrix can have a different routing or physical layout of their LEDs,
+/// Where animations just want to write pixels to `X` and `Y` (and `Z` for 3D LED cubes) coordinates.
+/// It is then up to the implementation of this trait to ensure a particular write to some coordinate
+/// will be made correctly in the internal frame buffer.
+///
+/// The returned value of the [read] function is supplied forward to the [SmartLedsWrite::write] function.
+pub trait LedMatrix: 'static {
     /// The X dimension of the matrix
     const X: usize;
     /// The Y dimension of the matrix
     const Y: usize;
+    /// The Z dimension, in case your animation is for an LED cube.
+    /// 2D LED Matrices can set this to zero.
+    const Z: usize;
     /// The total area of the matrix. Usually this is X * Y.
     /// This information is required often;
     /// Accessing it directly is faster than calculating X * Y every time.
     const AREA: usize;
+
     /// The driver for the LED matrix.
     type Backend: SmartLedsWrite;
+
+    /// Read the entire internal frame buffer.
+    fn read(&self) -> Vec<<Self::Backend as SmartLedsWrite>::Color>;
+
+    /// Write a pixel to the given `x` / `y` coordinate of your 2D LED Matrix.
+    fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {}
+
+    /// Write a pixel to the given `x` / `y` `z` coordinate of your LED Cube.
+    /// 2D LED matrices don't need to implement this function, it'll default to set_2D.
+    fn set_3d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {
+        Self::set_2d(self, x, y, color)
+    }
 }
 
 /// Trait for implementing animations that can run on a variety of LED matrices.
@@ -24,20 +48,17 @@ pub trait MatrixConfig: 'static {
 /// on the [MatrixConfig] type.
 ///
 /// Many examples can be found in the `lux-camp-badge-animations` crate.
-pub trait Animation<C: MatrixConfig> {
-    /// Initialization function for your Animation. The output of it will be drawed
-    /// whenever this animation is loaded.
-    ///
-    /// If `None` is returned, nothing will be drawed.
-    fn init(&mut self) -> Option<Vec<<C::Backend as SmartLedsWrite>::Color>> {
-        None
+pub trait Animation<C: LedMatrix> {
+    /// Initialization function for your Animation.
+    /// Useful for clearing the frame buf or drawing a static image.
+    /// If `false` is returned, nothing will be drawed upon initialization.
+    fn init(&mut self) -> bool {
+        false
     }
 
     /// The draw function of your Animation, called at every frame.
-    /// The output of this function will be written to the matrix.
-    ///
-    /// If `None` is returned, nothing will be drawed for the current frame.
-    fn update(&mut self, _tick: Duration) -> Option<Vec<<C::Backend as SmartLedsWrite>::Color>> {
-        None
+    /// If `false` is returned, nothing will be drawed for the current frame.
+    fn update(&mut self, _tick: Duration) -> bool {
+        false
     }
 }
