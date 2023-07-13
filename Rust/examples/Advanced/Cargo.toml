@@ -1,5 +1,5 @@
 [package]
-name = "hello-stamp-c3v2"
+name = "advanced"
 version = "0.1.0"
 authors = ["Raphael Theiler <peanut@esheep.ch>"]
 edition = "2021"
