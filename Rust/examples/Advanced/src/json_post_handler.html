@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ESP-RS JSON Post Handler</title>
-    <style type="text/css">
+    <style>
         body {
             max-width: 50em;
             margin: auto;
@@ -26,7 +26,7 @@
         .card h1 {
             color: #1abc9c;
             margin-top: 5px;
-            padding-top: 0px;
+            padding-top: 0;
             border-bottom: solid thin grey;
         }
     </style>
@@ -134,7 +134,7 @@
         }
 
         canvas.addEventListener("mousemove", (e) => {
-            if (e.buttons == 1) {
+            if (e.buttons === 1) {
 
                 let x = e.offsetX;
                 let y = e.offsetY;
@@ -193,7 +193,7 @@
 
         theForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            postPixels();
+            await postPixels();
         });
         async function postPixels() {
 
