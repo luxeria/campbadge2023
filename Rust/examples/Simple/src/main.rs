@@ -10,7 +10,6 @@ use log::*;
 
 use smart_leds::RGB8;
 
-use esp_idf_hal::gpio;
 use esp_idf_hal::gpio::PinDriver;
 use std::thread::sleep;
 use std::time::Duration;

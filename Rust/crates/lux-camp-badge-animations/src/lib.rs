@@ -9,7 +9,7 @@ pub mod static_scene;
 ///
 /// Returns `None` if not enough time has passed yet.
 /// Otherwise returns the lag.
-pub fn wait_at_least(amount: Duration, since: Duration, now: Duration) -> Option<Duration> {
+pub fn wait_for(amount: Duration, since: Duration, now: Duration) -> Option<Duration> {
     let threshold = since + amount;
     if threshold <= now {
         return Some(now - threshold);
