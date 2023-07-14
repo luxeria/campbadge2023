@@ -18,6 +18,21 @@ impl Inner {
             step_size,
         }
     }
+
+    // Helper that returns true if the current frame should be skipped.
+    // Otherwise last_tick is updated to the current one.
+    fn skip_frame(&mut self, tick: Duration) -> bool {
+        if self
+            .fading_speed
+            .map(|amount| crate::wait_for(amount, self.last_tick, tick))
+            .is_none()
+        {
+            return true;
+        }
+
+        self.last_tick = tick;
+        false
+    }
 }
 
 /// Fill the entire screen with a fading rainbow.
@@ -34,18 +49,11 @@ where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
-        if self
-            .0
-            .fading_speed
-            .map(|amount| crate::wait_for(amount, self.0.last_tick, tick))
-            .is_none()
-        {
+        if self.0.skip_frame(tick) {
             return false;
-        }
+        };
 
-        self.0.last_tick = tick;
         self.0.hue += self.0.step_size; // Overflow is what we want here
-
         let hsv = Hsv8 {
             hue: self.0.hue,
             sat: 255,
@@ -71,18 +79,11 @@ where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
-        if self
-            .0
-            .fading_speed
-            .map(|amount| crate::wait_for(amount, self.0.last_tick, tick))
-            .is_none()
-        {
+        if self.0.skip_frame(tick) {
             return false;
-        }
+        };
 
-        self.0.last_tick = tick;
         self.0.hue += self.0.step_size;
-
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
         for n in 0..<C as LedMatrix>::AREA {
             buf.push(<Hsv8 as Hsv2Rgb>::hsv2rgb(Hsv8 {
