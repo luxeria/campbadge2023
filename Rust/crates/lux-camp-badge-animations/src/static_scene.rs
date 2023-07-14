@@ -13,7 +13,7 @@ where
         if self.0.len() != <C as LedMatrix>::AREA {
             return false;
         }
-        matrix.set_buf(self.0.clone());
+        matrix.set_buf(&mut self.0);
         true
     }
 }

@@ -36,7 +36,7 @@ where
                 RGB8::new(0, 0, 0)
             })
         }
-        matrix.set_buf(buf);
+        matrix.set_buf(&mut buf);
         true
     }
 }

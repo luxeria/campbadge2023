@@ -10,8 +10,6 @@ use lux_camp_badge::led::matrix::{self, Handle, Matrix};
 use lux_camp_badge::led::{Animation, LedMatrix};
 use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
 use lux_camp_badge_animations::random::RandomAnimation;
-//use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
-//use lux_camp_badge_animations::random::RandomAnimation;
 use lux_camp_badge_animations::static_scene::Scene;
 use serde::Deserialize;
 use smart_leds::RGB8;
@@ -34,18 +32,18 @@ struct LuxBadge(
 );
 
 impl LedMatrix for LuxBadge {
-    const AREA: usize = 25;
     const X: usize = 5;
     const Y: usize = 5;
-    const Z: usize = 0;
     type Backend = Ws2812Esp32Rmt;
 
-    fn read_buf(&self) -> Vec<<Self::Backend as SmartLedsWrite>::Color> {
-        self.0.to_vec()
+    fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
+        &self.0
     }
 
-    fn set_buf(&mut self, buf: Vec<<Self::Backend as SmartLedsWrite>::Color>) {
-        self.0.copy_from_slice(&buf);
+    fn set_buf(&mut self, buf: &mut [<Self::Backend as SmartLedsWrite>::Color]) {
+        if buf.len() == self.0.len() {
+            self.0.copy_from_slice(buf);
+        }
     }
 
     fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {

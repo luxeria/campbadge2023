@@ -1,5 +1,4 @@
-use lux_camp_badge::led::{Animation, LedMatrix};
-use smart_leds::hsv::{hsv2rgb, Hsv};
+use lux_camp_badge::led::{hsv_rgb_convert::*, Animation, LedMatrix};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
 
@@ -47,12 +46,13 @@ where
         self.0.last_tick = tick;
         self.0.hue += self.0.step_size; // Overflow is what we want here
 
-        let hsv = Hsv {
+        let hsv = Hsv8 {
             hue: self.0.hue,
             sat: 255,
             val: 25,
         };
-        matrix.set_buf(vec![hsv2rgb(hsv); <C as LedMatrix>::AREA]);
+        let buf = &mut vec![<Hsv8 as Hsv2Rgb>::hsv2rgb(hsv); <C as LedMatrix>::AREA];
+        matrix.set_buf(buf);
         true
     }
 }
@@ -85,13 +85,13 @@ where
 
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
         for n in 0..<C as LedMatrix>::AREA {
-            buf.push(hsv2rgb(Hsv {
+            buf.push(<Hsv8 as Hsv2Rgb>::hsv2rgb(Hsv8 {
                 hue: self.0.hue + (n as u8 * self.0.step_size),
                 sat: 255,
                 val: 25,
             }))
         }
-        matrix.set_buf(buf);
+        matrix.set_buf(&mut buf);
         true
     }
 }

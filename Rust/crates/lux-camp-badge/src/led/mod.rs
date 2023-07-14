@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use smart_leds_trait::SmartLedsWrite;
 
+pub mod hsv_rgb_convert;
 pub mod matrix;
 
 /// Configuration trait for implementing the LED matrix being used.
@@ -12,28 +13,29 @@ pub mod matrix;
 /// It is then up to the implementation of this trait to ensure a particular write to some coordinate
 /// will be made correctly in the internal frame buffer.
 ///
-/// The returned value of the [read] function is supplied forward to the [SmartLedsWrite::write] function.
-pub trait LedMatrix: 'static {
+/// The returned value of the [LedMatrix::read_buf] function is copied to the [SmartLedsWrite::write] function.
+pub trait LedMatrix {
     /// The X dimension of the matrix
     const X: usize;
     /// The Y dimension of the matrix
     const Y: usize;
-    /// The Z dimension, in case your animation is for an LED cube.
+    /// The Z dimension, in case your animation is for an LED cube (optional).
     /// 2D LED Matrices can set this to zero.
-    const Z: usize;
+    const Z: usize = 0;
     /// The total area of the matrix. Usually this is X * Y.
-    /// This information is required often;
-    /// Accessing it directly is faster than calculating X * Y every time.
-    const AREA: usize;
+    /// This information is required often; accessing it directly is faster.
+    const AREA: usize = Self::X * Self::Y;
+    /// The total volume of the cube. Usually this is X * Y * Z.
+    const VOLUME: usize = Self::X * Self::Y * Self::Z;
 
     /// The driver for the LED matrix.
     type Backend: SmartLedsWrite;
 
     /// Read the entire internal frame buffer.
-    fn read_buf(&self) -> Vec<<Self::Backend as SmartLedsWrite>::Color>;
+    fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color];
 
     /// Write to the entire internal frame buffer.
-    fn set_buf(&mut self, buf: Vec<<Self::Backend as SmartLedsWrite>::Color>);
+    fn set_buf(&mut self, buf: &mut [<Self::Backend as SmartLedsWrite>::Color]);
 
     /// Write a pixel to the given `x` / `y` coordinate of your 2D LED Matrix.
     fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color);
@@ -55,7 +57,7 @@ pub trait LedMatrix: 'static {
 /// Trait for implementing animations that can run on a variety of LED matrices.
 ///
 /// State should be stored in `self`, where as properties of the LED matrix can be found
-/// on the [MatrixConfig] type.
+/// on the `MatrixConfig` type.
 ///
 /// Many examples can be found in the `lux-camp-badge-animations` crate.
 #[allow(unused)]
@@ -68,7 +70,7 @@ pub trait Animation<C: LedMatrix> {
     }
 
     /// The draw function of your Animation, called at every frame.
-    /// If `false` is returned, nothing will be drawed for the current frame.
+    /// If `false` is returned, nothing will be drawed in the current frame.
     fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
         false
     }
