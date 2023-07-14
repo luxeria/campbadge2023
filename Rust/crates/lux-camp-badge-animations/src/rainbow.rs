@@ -34,12 +34,14 @@ impl<B, C: LedMatrix<Backend = B>> Animation<C> for FadingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
-    fn update(
-        &mut self,
-        tick: Duration,
-    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
-        if let Some(amount) = self.0.fading_speed {
-            crate::wait_at_least(amount, self.0.last_tick, tick)?;
+    fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
+        if self
+            .0
+            .fading_speed
+            .map(|amount| crate::wait_for(amount, self.0.last_tick, tick))
+            .is_none()
+        {
+            return false;
         }
 
         self.0.last_tick = tick;
@@ -50,7 +52,8 @@ where
             sat: 255,
             val: 25,
         };
-        Some(vec![hsv2rgb(hsv); <C as LedMatrix>::AREA])
+        matrix.set_buf(vec![hsv2rgb(hsv); <C as LedMatrix>::AREA]);
+        true
     }
 }
 
@@ -67,12 +70,14 @@ impl<B, C: LedMatrix<Backend = B>> Animation<C> for SlidingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
-    fn update(
-        &mut self,
-        tick: Duration,
-    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
-        if let Some(amount) = self.0.fading_speed {
-            crate::wait_at_least(amount, self.0.last_tick, tick)?;
+    fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
+        if self
+            .0
+            .fading_speed
+            .map(|amount| crate::wait_for(amount, self.0.last_tick, tick))
+            .is_none()
+        {
+            return false;
         }
 
         self.0.last_tick = tick;
@@ -86,6 +91,7 @@ where
                 val: 25,
             }))
         }
-        Some(buf)
+        matrix.set_buf(buf);
+        true
     }
 }

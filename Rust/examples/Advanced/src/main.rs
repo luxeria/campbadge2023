@@ -8,6 +8,8 @@ use esp_idf_svc::wifi::EspWifi;
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use lux_camp_badge::led::matrix::{self, Handle, Matrix};
 use lux_camp_badge::led::{Animation, LedMatrix};
+use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
+use lux_camp_badge_animations::random::RandomAnimation;
 //use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
 //use lux_camp_badge_animations::random::RandomAnimation;
 use lux_camp_badge_animations::static_scene::Scene;
@@ -30,6 +32,7 @@ use esp_idf_svc::{
 struct LuxBadge(
     [<<Self as LedMatrix>::Backend as SmartLedsWrite>::Color; <Self as LedMatrix>::AREA],
 );
+
 impl LedMatrix for LuxBadge {
     const AREA: usize = 25;
     const X: usize = 5;
@@ -37,8 +40,16 @@ impl LedMatrix for LuxBadge {
     const Z: usize = 0;
     type Backend = Ws2812Esp32Rmt;
 
-    fn read(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
-        &self.0
+    fn read_buf(&self) -> Vec<<Self::Backend as SmartLedsWrite>::Color> {
+        self.0.to_vec()
+    }
+
+    fn set_buf(&mut self, buf: Vec<<Self::Backend as SmartLedsWrite>::Color>) {
+        self.0.copy_from_slice(&buf);
+    }
+
+    fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {
+        self.0[x * <Self as LedMatrix>::X + y] = color;
     }
 }
 
@@ -137,7 +148,7 @@ fn start_web_server(
             serde_json::from_slice::<FormDataMode>(&buf)
                 .map(|form| {
                     let animation: Box<dyn Animation<LuxBadge> + Send + 'static> = match form.mode {
-                        //"animation" => Box::new(SlidingRainbow::new(4, None)),
+                        "animation" => Box::new(SlidingRainbow::new(4, None)),
                         "interactive" | "off" => Box::new(Scene(vec![
                             RGB8::new(0, 0, 0);
                             <LuxBadge as LedMatrix>::AREA
@@ -172,9 +183,9 @@ fn start_web_server(
                 .map(|form| {
                     let animation: Box<dyn Animation<LuxBadge> + Send + 'static> =
                         match form.animation {
-                            //"rainbow" => Box::new(FadingRainbow::new(1, None)),
-                            //"rainbow-slide" => Box::new(SlidingRainbow::new(5, None)),
-                            //"random" => Box::<RandomAnimation>::default(),
+                            "rainbow" => Box::new(FadingRainbow::new(1, None)),
+                            "rainbow-slide" => Box::new(SlidingRainbow::new(5, None)),
+                            "random" => Box::<RandomAnimation>::default(),
                             _ => Box::new(Scene(vec![
                                 RGB8::new(0, 0, 0);
                                 <LuxBadge as LedMatrix>::AREA
@@ -233,9 +244,8 @@ fn main() -> ! {
     let _wifi = connect_wifi();
 
     // Setup HTTP server and LED matrix
-    let led_matrix = Matrix::<_, _>::new(LuxBadge::default())
-        //.animation::<LuxBadge>(Box::<RandomAnimation>::default())
-        .animation(Box::<Scene>::default())
+    let led_matrix = Matrix::new(LuxBadge::default())
+        .animation(Box::<RandomAnimation>::default())
         .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())
         .unwrap();
     let _server = start_web_server(led_matrix);

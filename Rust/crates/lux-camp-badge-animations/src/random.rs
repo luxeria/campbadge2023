@@ -22,11 +22,10 @@ impl<B, C: LedMatrix<Backend = B>> Animation<C> for RandomAnimation
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
-    fn update(
-        &mut self,
-        tick: Duration,
-    ) -> Option<Vec<<<C as LedMatrix>::Backend as SmartLedsWrite>::Color>> {
-        crate::wait_at_least(Duration::from_millis(250), self.last_tick, tick)?;
+    fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
+        if crate::wait_for(Duration::from_millis(250), self.last_tick, tick).is_none() {
+            return false;
+        }
         self.last_tick = tick;
 
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
@@ -37,6 +36,7 @@ where
                 RGB8::new(0, 0, 0)
             })
         }
-        Some(buf)
+        matrix.set_buf(buf);
+        true
     }
 }

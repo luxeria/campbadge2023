@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)] // This only applies to internal types.
 
-//! Generic, performant, panic-free* and thread-safe implementation over an LED matrix:
+//! Generic, panic-free* and thread-safe implementation over an LED matrix:
 //!
 //! * Correct usage should be guaranteed at compile time.
 //! * Animations are abstracted via the [Animation] trait of this crate.
@@ -9,7 +9,7 @@
 //! \* Ultimately depends on the backend and animation implementations.
 use esp_idf_svc::systime::EspSystemTime;
 use lazy_static::lazy_static;
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use smart_leds_trait::SmartLedsWrite;
 use std::{
     fmt::Debug,
     marker::PhantomData,
@@ -19,7 +19,6 @@ use std::{
 };
 
 pub use self::state::AnimationSet;
-use self::state::MatrixSet;
 use super::{Animation, LedMatrix};
 
 lazy_static! {
@@ -40,8 +39,6 @@ pub enum Error<T: Debug> {
 mod state {
     /// Represents a builder state where the animation is set.
     pub struct AnimationSet;
-    /// Represents a builder state where the matrix is set.
-    pub struct MatrixSet;
 }
 
 /// Default backend that does nothing.
@@ -73,8 +70,16 @@ impl LedMatrix for DummyConfig {
 
     type Backend = DummyBackend;
 
-    fn read(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
-        &self.0
+    fn read_buf(&self) -> Vec<<Self::Backend as SmartLedsWrite>::Color> {
+        unimplemented!()
+    }
+
+    fn set_buf(&mut self, _buf: Vec<<Self::Backend as SmartLedsWrite>::Color>) {
+        unimplemented!()
+    }
+
+    fn set_2d(&mut self, _x: usize, _y: usize, _color: <Self::Backend as SmartLedsWrite>::Color) {
+        unimplemented!()
     }
 }
 
@@ -128,10 +133,7 @@ where
     pub fn run(
         mut self,
         driver: <S as LedMatrix>::Backend,
-    ) -> Result<Arc<Mutex<Option<Handle<S, B>>>>, Error<<B as SmartLedsWrite>::Error>>
-    where
-        for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
-    {
+    ) -> Result<Arc<Mutex<Option<Handle<S, B>>>>, Error<<B as SmartLedsWrite>::Error>> {
         let mut matrix = Matrix {
             animation: self.animation.take().unwrap(),
             backend: self.matrix,
@@ -180,13 +182,9 @@ where
         }
     }
 
-    fn init_animation(&mut self) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
-    where
-        for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
-    {
-        if self.animation.init() {
-            //self.draw(pixels.into_iter());
-            self.driver.write(self.backend.read().iter());
+    fn init_animation(&mut self) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
+        if self.animation.init(&mut self.backend) {
+            return self.draw(self.backend.read_buf());
         }
         Ok(())
     }
@@ -194,23 +192,17 @@ where
     fn set_animation(
         &mut self,
         animation: Box<dyn Animation<S> + Send>,
-    ) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
-    where
-        for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
-    {
+    ) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
         self.animation = animation;
         self.init_animation()
     }
 
-    //fn draw<I>(&mut self, pixels: &I) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
-    //where
-    //    I: IntoIterator<Item = <<B as LedMatrix>::Backend as SmartLedsWrite>::Color>,
-    //{
-    //    //self.backend
-    //    //    .write(pixels.into_iter())
-    //    //    .map_err(Error::Driver)
-    //    todo!()
-    //}
+    fn draw<I>(&mut self, pixels: I) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
+    where
+        I: IntoIterator<Item = <B as SmartLedsWrite>::Color>,
+    {
+        self.driver.write(pixels.into_iter()).map_err(Error::Driver)
+    }
 
     fn run(mut self) -> JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>> {
         std::thread::spawn(|| loop {
@@ -220,8 +212,8 @@ where
                 return Ok(self);
             }
 
-            if self.animation.update(self.tick) {
-                //self.draw(self.backend.read())?;
+            if self.animation.update(self.tick, &mut self.backend) {
+                self.draw(self.backend.read_buf())?;
             }
 
             std::thread::sleep(self.frame_time - (EspSystemTime {}.now() - self.tick));
@@ -243,10 +235,7 @@ where
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
 {
-    fn start(mut matrix: Matrix<S, B>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>>
-    where
-        for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
-    {
+    fn start(mut matrix: Matrix<S, B>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
         *STOP.lock().map_err(|_| Error::Poisoned)? = false;
         matrix.init_animation()?;
         Ok(Self(matrix.run()))
@@ -256,10 +245,7 @@ where
     fn update(
         self,
         animation: Box<dyn Animation<S> + Send>,
-    ) -> Result<Self, Error<<B as SmartLedsWrite>::Error>>
-    where
-        for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
-    {
+    ) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
         let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
         matrix.set_animation(animation)?;
         Self::start(matrix)
@@ -280,7 +266,6 @@ where
     S: LedMatrix<Backend = B> + Send,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
-    for<'a> <B as SmartLedsWrite>::Color: From<&'a <B as SmartLedsWrite>::Color>,
 {
     let mut handle = handle.lock().map_err(|_| Error::Poisoned)?;
     if let Some(inner) = handle.take() {
