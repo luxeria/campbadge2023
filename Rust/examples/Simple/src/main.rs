@@ -1,7 +1,6 @@
 #![feature(str_split_remainder)]
 
 mod led_matrix;
-mod rgb2hsv;
 
 use crate::led_matrix::{LedMatrix, LedState};
 
@@ -11,10 +10,10 @@ use log::*;
 
 use smart_leds::RGB8;
 
-use std::thread::sleep;
-use std::time::Duration;
 use esp_idf_hal::gpio;
 use esp_idf_hal::gpio::PinDriver;
+use std::thread::sleep;
+use std::time::Duration;
 
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
