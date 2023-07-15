@@ -146,6 +146,18 @@ fn start_web_server(
 
     let h = Arc::clone(&led_matrix);
     server
+        .fn_handler("/mode", Method::Get, move |req| {
+            if req.uri().starts_with("/mode?set=off") {
+                matrix::update(&h, Off::default())
+                    .map_err(|_| HandlerError::new("matrix error"))?;
+            }
+            req.into_ok_response()?;
+            Ok(())
+        })
+        .unwrap();
+
+    let h = Arc::clone(&led_matrix);
+    server
         .fn_handler("/animation", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
 
@@ -161,15 +173,22 @@ fn start_web_server(
 
             serde_json::from_slice::<FormDataAnimation>(&buf)
                 .map(|form| {
-                    let animation: Box<dyn Animation<LuxBadge> + Send + 'static> = match form
-                        .animation
-                    {
-                        "rainbow" => rainbow::Fade::build(1, None),
-                        "rainbow-slide" => rainbow::Slide::build(5, None),
-                        "flip" => random::Flip::build(EspSystemTime {}.now().as_millis() as u64),
-                        "random" => random::P30::build(EspSystemTime {}.now().as_millis() as u64),
-                        _ => Off::default(),
-                    };
+                    let seed = EspSystemTime {}.now().as_millis() as u64;
+                    let animation: Box<dyn Animation<LuxBadge> + Send + 'static> =
+                        match form.animation {
+                            "rainbow" => rainbow::Fade::build(1, None),
+                            "rainbow-slide" => rainbow::Slide::build(5, None),
+                            "flip" => random::Flip::build(seed),
+                            "random" => random::P30::build(seed),
+                            "gol" => gol::Gol::<
+                                Color<LuxBadge>,
+                                { <LuxBadge as LedMatrix>::X },
+                                { <LuxBadge as LedMatrix>::Y },
+                            >::build(
+                                seed, 0.5, Some(256), Some(Duration::from_millis(250))
+                            ),
+                            _ => Off::default(),
+                        };
                     matrix::update(&h, animation).unwrap();
                     write!(resp, "Displaying {}", form.animation)
                 })
@@ -232,7 +251,6 @@ fn main() -> ! {
     let _nvs = init();
     let peripherals = Peripherals::take().unwrap();
     let modem = peripherals.modem;
-    let _wifi = connect_wifi(modem);
 
     let mut vcc_pin = PinDriver::output(peripherals.pins.gpio0).unwrap();
     vcc_pin.set_high().unwrap();
@@ -242,6 +260,7 @@ fn main() -> ! {
         .animation(random::P30::build(EspSystemTime {}.now().as_millis() as u64))
         .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())
         .unwrap();
+    let _wifi = connect_wifi(modem);
     let _server = start_web_server(led_matrix);
 
     loop {

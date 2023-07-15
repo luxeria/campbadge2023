@@ -1,3 +1,5 @@
+/// Game of life, you know the rules.
+pub mod gol;
 /// Rainbow animations (classic HSV)
 pub mod rainbow;
 /// Animations that draw pixels randomly
@@ -7,6 +9,7 @@ pub mod scene;
 
 /// All available animation modules.
 pub mod prelude {
+    pub use crate::gol;
     pub use crate::rainbow;
     pub use crate::random;
     pub use crate::scene;

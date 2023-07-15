@@ -50,6 +50,7 @@
                 <option value="rainbow-slide">Rainbow Slide</option>
                 <option value="flip">Flip</option>
                 <option value="random">Random</option>
+                <option value="gol">Game of Life</option>
             </select>
         </div>
         <div id="image-card" class="card" style="display: none">
@@ -92,6 +93,12 @@
                 card.style.display = "none";
             });
             document.getElementById(event.target.value + "-card").style.display = "block";
+            try {
+                let resp = await fetch('/mode?set=' + event.target.value);
+                serverResp.innerText = await resp.text();
+            } catch (err) {
+                serverResp.innerText = err;
+            }
         });
         const animations = document.getElementById("animation");
         animations.addEventListener("change", async (event) => {
