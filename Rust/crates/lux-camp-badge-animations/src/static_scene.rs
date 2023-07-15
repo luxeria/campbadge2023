@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use lux_camp_badge::led::{Animation, LedMatrix};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 
@@ -18,12 +20,12 @@ impl<Color: Default, const X: usize, const Y: usize, B, C: LedMatrix<Driver = B>
 where
     B: SmartLedsWrite<Color = Color>,
 {
-    fn init(&mut self, matrix: &mut C) -> bool {
+    fn init(&mut self, matrix: &mut C) -> Option<Duration> {
         for y in 0..<C as LedMatrix>::Y {
             for x in 0..<C as LedMatrix>::X {
                 matrix.set_2d(x, y, &self.0[y][x])
             }
         }
-        true
+        Some(Duration::MAX)
     }
 }

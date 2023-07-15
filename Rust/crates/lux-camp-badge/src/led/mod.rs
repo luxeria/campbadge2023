@@ -60,14 +60,16 @@ pub trait LedMatrix {
 pub trait Animation<C: LedMatrix> {
     /// Initialization function for your Animation.
     /// Useful for clearing the frame buf or drawing a static image.
-    /// If `false` is returned, nothing will be drawed upon initialization.
-    fn init(&mut self, matrix: &mut C) -> bool {
-        false
+    ///
+    /// The return value can be used to set the frame rate of the animation:
+    /// For example, if you want your animation to update only once per second,
+    /// return a duration of 1 second.
+    /// Return `None` if the animation should updated at the FPS rate of the
+    /// matrix (once per frame time, default 24 FPS).
+    fn init(&mut self, matrix: &mut C) -> Option<Duration> {
+        None
     }
 
     /// The draw function of your Animation, called at every frame.
-    /// If `false` is returned, nothing will be drawed in the current frame.
-    fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
-        false
-    }
+    fn update(&mut self, tick: Duration, matrix: &mut C) {}
 }

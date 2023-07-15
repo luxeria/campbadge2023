@@ -4,28 +4,33 @@ use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
 
 /// Every 250ms, each pixel has a 30% chance of getting colored randomly.
-pub struct RandomAnimation {
+pub struct Random {
     last_tick: Duration,
     rng: SmallRng,
 }
 
-impl Default for RandomAnimation {
-    fn default() -> Self {
-        Self {
+impl Random {
+    pub fn boxed<Matrix, Driver>(seed: u64) -> Box<dyn Animation<Matrix> + Send>
+    where
+        Matrix: LedMatrix<Driver = Driver>,
+        Driver: SmartLedsWrite<Color = RGB8>,
+    {
+        Box::new(Self {
             last_tick: Duration::ZERO,
-            rng: SmallRng::seed_from_u64(123),
-        }
+            rng: SmallRng::seed_from_u64(seed),
+        })
     }
 }
 
-impl<B, C: LedMatrix<Driver = B>> Animation<C> for RandomAnimation
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for Random
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
-    fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
-        if crate::skip_frame(Duration::from_millis(250), self.last_tick, tick) {
-            return false;
-        }
+    fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
+        Some(Duration::from_millis(self.rng.gen_range(100..1000)))
+    }
+
+    fn update(&mut self, tick: Duration, matrix: &mut C) {
         self.last_tick = tick;
 
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
@@ -37,6 +42,5 @@ where
             })
         }
         matrix.set_buf(&mut buf);
-        true
     }
 }

@@ -15,6 +15,7 @@
 //!
 //! ```
 //! use lux_camp_badge::led::{Animation, Color, LedMatrix};
+//! use lux_camp_badge_animations::{random::Random, rainbow::SlidingRainbow};
 //! use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 //!
 //! // Matrix backend holding the frame buffer
@@ -49,14 +50,13 @@
 //!
 //! // Instantiate and start the matrix with the random animation
 //! let handle = Matrix::new(MyMatrix::default())
-//!     .animation(Box::<lux_camp_badge_animations::random::RandomAnimation>::default())
+//!     .animation(Random::boxed(0))
 //!     .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())?;
 //!
 //! // ...
 //!
 //! // Change the animation to a shiny rainbow:
-//! let animation = lux_camp_badge_animations::rainbow::SlidingRainbow::new(5, None);
-//! matrix::update(&handle, Box::new(animation))?;
+//! matrix::update(&handle, SlidingRainbow::boxed(5, None))?;
 //! ```
 use esp_idf_svc::systime::EspSystemTime;
 use lazy_static::lazy_static;
@@ -188,7 +188,8 @@ where
             animation: self.animation.take().unwrap(),
             backend: self.matrix,
             driver,
-            frame_time: Duration::from_millis(1000 / self.fps as u64),
+            cycle_time: Duration::from_millis(1000 / self.fps as u64),
+            frame_rate: None,
             tick: EspSystemTime {}.now(),
         };
         matrix.init_animation()?;
@@ -210,7 +211,8 @@ where
     animation: Box<dyn Animation<S> + Send>,
     backend: S,
     driver: S::Driver,
-    frame_time: Duration,
+    cycle_time: Duration,
+    frame_rate: Option<Duration>,
     tick: Duration,
 }
 
@@ -234,10 +236,8 @@ where
     }
 
     fn init_animation(&mut self) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
-        if self.animation.init(&mut self.backend) {
-            return self.draw(self.backend.read_buf().to_vec());
-        }
-        Ok(())
+        self.frame_rate = self.animation.init(&mut self.backend);
+        self.draw(self.backend.read_buf().to_vec())
     }
 
     fn set_animation(
@@ -259,17 +259,25 @@ where
 
     fn run(mut self) -> JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>> {
         std::thread::spawn(|| loop {
-            self.tick = EspSystemTime {}.now();
-
+            std::thread::sleep(
+                self.cycle_time
+                    .saturating_sub(EspSystemTime {}.now() - self.tick),
+            );
             if *STOP.lock().map_err(|_| Error::Poisoned)? {
                 return Ok(self);
             }
 
-            if self.animation.update(self.tick, &mut self.backend) {
-                self.draw(self.backend.read_buf().to_vec())?;
+            let now = EspSystemTime {}.now();
+            if self
+                .frame_rate
+                .is_some_and(|step| self.tick.saturating_add(step) > now)
+            {
+                continue;
             }
 
-            std::thread::sleep(self.frame_time - (EspSystemTime {}.now() - self.tick));
+            self.tick = now;
+            self.animation.update(now, &mut self.backend);
+            self.draw(self.backend.read_buf().to_vec())?;
         })
     }
 }
