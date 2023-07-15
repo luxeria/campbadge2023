@@ -1,0 +1,4 @@
+#define arrow_ne_width 5
+#define arrow_ne_height 5
+static unsigned char arrow_ne_bits[] = {
+  0x7, 0x3, 0x5, 0x8, 0x10 };

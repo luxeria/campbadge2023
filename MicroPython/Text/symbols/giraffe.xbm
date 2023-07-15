@@ -1,0 +1,4 @@
+#define giraffe_width 5
+#define giraffe_height 5
+static unsigned char giraffe_bits[] = {
+  0x18, 0x8, 0x8, 0xe, 0xa };

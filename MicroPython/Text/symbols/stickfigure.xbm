@@ -1,0 +1,4 @@
+#define stickfigure_width 5
+#define stickfigure_height 5
+static unsigned char stickfigure_bits[] = {
+  0x4, 0x1f, 0x4, 0xa, 0x11 };

@@ -1,0 +1,4 @@
+#define house_width 5
+#define house_height 5
+static unsigned char house_bits[] = {
+  0x4, 0xe, 0x1f, 0xe, 0xa };

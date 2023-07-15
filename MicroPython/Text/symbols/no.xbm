@@ -1,0 +1,4 @@
+#define no_width 5
+#define no_height 5
+static unsigned char no_bits[] = {
+  0x11, 0xa, 0x4, 0xa, 0x11 };

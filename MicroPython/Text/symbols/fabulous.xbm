@@ -1,0 +1,4 @@
+#define fabulous_width 5
+#define fabulous_height 5
+static unsigned char fabulous_bits[] = {
+  0x1f, 0x1b, 0x0, 0xa, 0xe };

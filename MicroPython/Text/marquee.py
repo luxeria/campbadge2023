@@ -1,5 +1,8 @@
-import re
 import framebuf
+import os
+import re
+
+from micropython import const
 
 _XBM_WIDTH = re.compile(r'#define\s\w+_width\s(\d+)')
 _XBM_HEIGHT = re.compile(r'#define\s\w+_height\s(\d+)')
@@ -41,22 +44,21 @@ class Symbol:
         x += self.w - self.remaining_w
         return _WHITE if self.buf.pixel(x, y) else _BLACK
 
-def text(text, font = "symbols"):
-    return Marquee(["{}/letter_{}.xbm".format(font, ord(c)) for c in text])
-
 class Marquee:
     def __init__(self, files):
         self.load_queue = files
         self.draw_queue = []
 
     def _scroll(self):
+        if not self.load_queue and not self.draw_queue:
+            return False
+
         # scroll first symbol in draw queue by one pixel
         if len(self.draw_queue) > 0:
             self.draw_queue[0].scroll()
             if self.draw_queue[0].width() == 0:
                 self.draw_queue.pop(0)
-
-        return len(self.load_queue) > 0 or len(self.draw_queue) > 0
+        return True
 
     def _fill_queue(self, canvas):
         draw_queue_width = sum(sym.width() for sym in self.draw_queue)
@@ -86,7 +88,61 @@ class Marquee:
             if column >= canvas.width():
                 break
 
+        # clear trail
+        for x in range(column, canvas.width()):
+            for y in range(canvas.height()):
+                canvas.pixel(column, y, _BLACK)
+            column += 1
+
         # flush drawing
         canvas.draw()
 
         return self._scroll()
+
+_TOKEN_LETTER = const(1)
+_TOKEN_ICON = const(2)
+
+def _tokenize(s):
+    open = False
+    name = ""
+    for char in s:
+        if not open:
+            # opening {
+            if char == '{':
+                name = ""
+                open = True
+            # regular character
+            else:
+                yield (_TOKEN_LETTER, char)
+        else:
+            # closing }
+            if char == '}':
+                open = False
+                yield (_TOKEN_ICON, name)
+            # escaped {
+            elif char == '{' and not name:
+                open = False
+                yield (_TOKEN_LETTER, char)
+            # collect name
+            else:
+                name += char
+    if open:
+        raise ValueError("unmatched { in template")
+
+
+def text(text, font = "symbols"):
+    files = []
+    for (ty, tok) in _tokenize(text):
+        if ty == _TOKEN_LETTER:
+            file = "{}/letter_{}.xbm".format(font, ord(tok))
+        elif ty == _TOKEN_ICON:
+            file = "{}/{}.xbm".format(font, tok)
+        else:
+            raise ValueError("invalid token")
+        try:
+            os.stat(file)
+        except:
+            raise ValueError('invalid symbol "{}"'.format(tok))
+        files.append(file)
+
+    return Marquee(files)

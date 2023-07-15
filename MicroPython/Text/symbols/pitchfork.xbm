@@ -1,0 +1,4 @@
+#define pitchfork_width 5
+#define pitchfork_height 5
+static unsigned char pitchfork_bits[] = {
+  0x15, 0x15, 0x1f, 0x4, 0x4 };

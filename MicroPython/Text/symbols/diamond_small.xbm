@@ -1,0 +1,4 @@
+#define diamond_small_width 5
+#define diamond_small_height 5
+static unsigned char diamond_small_bits[] = {
+  0x0, 0x4, 0xa, 0x4, 0x0 };

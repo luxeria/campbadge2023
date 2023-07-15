@@ -1,0 +1,4 @@
+#define sad_width 5
+#define sad_height 5
+static unsigned char sad_bits[] = {
+  0x0, 0xa, 0x0, 0xe, 0x11 };

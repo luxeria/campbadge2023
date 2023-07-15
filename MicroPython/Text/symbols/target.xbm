@@ -1,0 +1,4 @@
+#define target_width 5
+#define target_height 5
+static unsigned char target_bits[] = {
+  0x4, 0xe, 0x1b, 0xe, 0x4 };

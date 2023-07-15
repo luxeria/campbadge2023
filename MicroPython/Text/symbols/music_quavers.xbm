@@ -1,0 +1,4 @@
+#define music_quavers_width 5
+#define music_quavers_height 5
+static unsigned char music_quavers_bits[] = {
+  0xf, 0x9, 0x9, 0x1b, 0x1b };

@@ -1,0 +1,4 @@
+#define smile_width 5
+#define smile_height 5
+static unsigned char smile_bits[] = {
+  0x0, 0x0, 0x0, 0x11, 0xe };

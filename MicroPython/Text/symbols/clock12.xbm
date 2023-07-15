@@ -1,0 +1,4 @@
+#define clock12_width 5
+#define clock12_height 5
+static unsigned char clock12_bits[] = {
+  0x4, 0x4, 0x4, 0x0, 0x0 };

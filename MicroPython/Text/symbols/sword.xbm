@@ -1,0 +1,4 @@
+#define sword_width 5
+#define sword_height 5
+static unsigned char sword_bits[] = {
+  0x4, 0x4, 0x4, 0xe, 0x4 };

@@ -1,0 +1,4 @@
+#define snake_width 5
+#define snake_height 5
+static unsigned char snake_bits[] = {
+  0x18, 0x1b, 0xa, 0xe, 0x0 };

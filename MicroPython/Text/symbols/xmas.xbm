@@ -1,0 +1,4 @@
+#define xmas_width 5
+#define xmas_height 5
+static unsigned char xmas_bits[] = {
+  0x4, 0xe, 0x4, 0xe, 0x1f };

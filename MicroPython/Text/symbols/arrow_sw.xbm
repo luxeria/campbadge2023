@@ -1,0 +1,4 @@
+#define arrow_sw_width 5
+#define arrow_sw_height 5
+static unsigned char arrow_sw_bits[] = {
+  0x1, 0x2, 0x14, 0x18, 0x1c };
