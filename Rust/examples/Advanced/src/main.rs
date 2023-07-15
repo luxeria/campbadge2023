@@ -1,5 +1,6 @@
 #![feature(str_split_remainder)]
 
+use embedded_svc::http::server::HandlerError;
 use embedded_svc::http::Headers;
 use embedded_svc::io::Read;
 use embedded_svc::{http::Method, io::Write};
@@ -76,11 +77,6 @@ struct FormData<'a> {
 }
 
 #[derive(Deserialize)]
-struct FormDataMode<'a> {
-    mode: &'a str,
-}
-
-#[derive(Deserialize)]
 struct FormDataAnimation<'a> {
     animation: &'a str,
 }
@@ -142,38 +138,8 @@ fn start_web_server(
     // http://<sta ip>/ handler
     server
         .fn_handler("/", Method::Get, |request| {
-            let mut response = request.into_ok_response().unwrap();
+            let mut response = request.into_ok_response()?;
             response.write_all(INDEX_HTML.as_bytes())?;
-            Ok(())
-        })
-        .unwrap();
-
-    let h = Arc::clone(&led_matrix);
-    server
-        .fn_handler("/mode", Method::Post, move |mut req| {
-            let len = req.content_len().unwrap_or(0) as usize;
-
-            if len > MAX_LEN {
-                req.into_status_response(413)?
-                    .write_all("Request too big".as_bytes())?;
-                return Ok(());
-            }
-
-            let mut buf = vec![0; len];
-            req.read_exact(&mut buf)?;
-            let mut resp = req.into_ok_response()?;
-
-            serde_json::from_slice::<FormDataMode>(&buf)
-                .map(|form| {
-                    let animation = match form.mode {
-                        "animation" => rainbow::Slide::build(4, None),
-                        _ => Off::default(),
-                    };
-                    matrix::update(&h, animation).unwrap();
-                    write!(resp, "Hello, {}", form.mode)
-                })
-                .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
-
             Ok(())
         })
         .unwrap();
@@ -213,6 +179,7 @@ fn start_web_server(
         })
         .unwrap();
 
+    let h = Arc::clone(&led_matrix);
     server
         .fn_handler("/interactive", Method::Post, move |mut req| {
             let len = req.content_len().unwrap_or(0) as usize;
@@ -229,11 +196,29 @@ fn start_web_server(
 
             serde_json::from_slice::<FormData>(&buf)
                 .map(|form| {
-                    matrix::update(&led_matrix, Box::new(scene::Static((&form).into()))).unwrap();
+                    matrix::update(&h, Box::new(scene::Static((&form).into()))).unwrap();
                     write!(resp, "Interactive {:?} Color:{}", form.pixels, form.color)
                 })
                 .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
 
+            Ok(())
+        })
+        .unwrap();
+
+    server
+        .fn_handler("/brightness", Method::Get, move |request| {
+            let level = match request.uri().split("?val=").nth(1) {
+                Some("off") => None,
+                Some(v) => v.parse::<u8>().map(|v| v as f32 / 100.0).ok(),
+                _ => return Err(HandlerError::new("invalid brightness value")),
+            };
+
+            matrix::brightness(&led_matrix, level)
+                .map_err(|_| HandlerError::new(r#"{ "error": "matrix failure" }"#))?;
+
+            request
+                .into_ok_response()?
+                .write(format!("brightness: {}%", level.unwrap_or(0.5) * 200.0).as_bytes())?;
             Ok(())
         })
         .unwrap();

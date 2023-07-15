@@ -70,7 +70,7 @@ use std::{
 };
 
 pub use self::state::AnimationSet;
-use super::{Animation, LedMatrix};
+use super::{Animation, Dimmable, LedMatrix};
 
 lazy_static! {
     static ref STOP: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
@@ -177,7 +177,7 @@ where
     S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone,
+    <B as SmartLedsWrite>::Color: Clone + Dimmable,
 {
     /// Start the matrix in a background thread.
     pub fn run(
@@ -187,6 +187,7 @@ where
         let mut matrix = Matrix {
             animation: self.animation.take().unwrap(),
             backend: self.matrix,
+            brightness: None,
             driver,
             cycle_time: Duration::from_millis(1000 / self.fps as u64),
             frame_rate: None,
@@ -210,6 +211,7 @@ where
 {
     animation: Box<dyn Animation<S> + Send>,
     backend: S,
+    brightness: Option<u8>,
     driver: S::Driver,
     cycle_time: Duration,
     frame_rate: Option<Duration>,
@@ -221,7 +223,7 @@ where
     S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone,
+    <B as SmartLedsWrite>::Color: Clone + Dimmable,
 {
     /// Creates a new [MatrixBuilder] with the following defaults:
     /// * `fps`: 24
@@ -254,7 +256,14 @@ where
     where
         I: IntoIterator<Item = <B as SmartLedsWrite>::Color>,
     {
-        self.driver.write(pixels.into_iter()).map_err(Error::Driver)
+        match self.brightness {
+            Some(level) => self.driver.write(pixels.into_iter().map(|mut pixel| {
+                pixel.dimm(level);
+                pixel
+            })),
+            _ => self.driver.write(pixels.into_iter()),
+        }
+        .map_err(Error::Driver)
     }
 
     fn run(mut self) -> JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>> {
@@ -289,19 +298,24 @@ where
     S: LedMatrix<Driver = B>,
     B: SmartLedsWrite + Send,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone;
+    <B as SmartLedsWrite>::Color: Clone + Dimmable;
 
 impl<S, B> Handle<S, B>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone,
+    <B as SmartLedsWrite>::Color: Clone + Dimmable,
 {
-    fn start(mut matrix: Matrix<S, B>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
+    fn start(matrix: Matrix<S, B>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
         *STOP.lock().map_err(|_| Error::Poisoned)? = false;
-        matrix.init_animation()?;
         Ok(Self(matrix.run()))
+    }
+
+    /// Stop the matrix and return the underlying instance if it was running.
+    fn stop(self) -> Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>> {
+        *STOP.lock().map_err(|_| Error::Poisoned)? = true;
+        self.0.join().map_err(|_| Error::Paniced)?
     }
 
     /// Restart with a new animation (if there is already a running instance).
@@ -313,11 +327,11 @@ where
         matrix.set_animation(animation)?;
         Self::start(matrix)
     }
-
-    /// Stop the matrix and return the underlying instance if it was running.
-    fn stop(self) -> Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>> {
-        *STOP.lock().map_err(|_| Error::Poisoned)? = true;
-        self.0.join().map_err(|_| Error::Paniced)?
+    /// Restart with a new animation (if there is already a running instance).
+    fn brightness(self, level: Option<u8>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
+        let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
+        matrix.brightness = level;
+        Self::start(matrix)
     }
 }
 
@@ -330,11 +344,31 @@ where
     S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone,
+    <B as SmartLedsWrite>::Color: Clone + Dimmable,
 {
     let mut handle = handle.lock().map_err(|_| Error::Poisoned)?;
     if let Some(inner) = handle.take() {
         let _ = handle.insert(inner.update(animation)?);
+    }
+    Ok(())
+}
+
+/// Adjust the brightness of the LEDs by `level`.
+///
+/// Levels > 0.5 result in full brightness.
+pub fn brightness<S, B>(
+    handle: &Arc<Mutex<Option<Handle<S, B>>>>,
+    level: Option<f32>,
+) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
+where
+    S: LedMatrix<Driver = B> + Send + 'static,
+    B: SmartLedsWrite + Send + 'static,
+    B::Error: Send + Debug,
+    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+{
+    let mut handle = handle.lock().map_err(|_| Error::Poisoned)?;
+    if let Some(inner) = handle.take() {
+        let _ = handle.insert(inner.brightness(level.map(|v| (1.0 / v.max(0.01).min(1.0)) as u8))?);
     }
     Ok(())
 }

@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use smart_leds_trait::SmartLedsWrite;
+use smart_leds_trait::{SmartLedsWrite, RGB8};
+
+use self::hsv_rgb_convert::Hsv8;
 
 pub mod hsv_rgb_convert;
 pub mod matrix;
@@ -34,7 +36,9 @@ pub trait LedMatrix {
     type Driver: SmartLedsWrite;
 
     /// Read the entire internal frame buffer.
-    fn read_buf(&self) -> &[Color<Self>];
+    fn read_buf(&self) -> &[Color<Self>]
+    where
+        Color<Self>: Dimmable;
 
     /// Write to the entire internal frame buffer.
     fn set_buf(&mut self, buf: &mut [Color<Self>]);
@@ -47,6 +51,27 @@ pub trait LedMatrix {
     #[allow(unused)]
     fn set_3d(&mut self, x: usize, y: usize, z: usize, color: &Color<Self>) {
         Self::set_2d(self, x, y, color)
+    }
+}
+
+/// RGB or HSV values are dimmable. Usually, full send will bleach your eyes out anyways.
+pub trait Dimmable {
+    /// Dimm `self` according to `level`, where level is a divisor of the full brightness.
+    #[allow(unused)]
+    fn dimm(&mut self, level: u8) {}
+}
+
+impl Dimmable for RGB8 {
+    fn dimm(&mut self, level: u8) {
+        self.r /= level;
+        self.g /= level;
+        self.b /= level;
+    }
+}
+
+impl Dimmable for Hsv8 {
+    fn dimm(&mut self, level: u8) {
+        self.val /= level;
     }
 }
 

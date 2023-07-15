@@ -47,7 +47,7 @@ where
         let hsv = Hsv8 {
             hue: self.0.hue,
             sat: 255,
-            val: 25,
+            val: 255,
         };
         let buf = &mut vec![<Hsv8 as Hsv2Rgb>::hsv2rgb(hsv); <C as LedMatrix>::AREA];
         matrix.set_buf(buf);
@@ -85,7 +85,7 @@ where
             buf.push(<Hsv8 as Hsv2Rgb>::hsv2rgb(Hsv8 {
                 hue: self.0.hue + (n as u8 * self.0.step_size),
                 sat: 255,
-                val: 25,
+                val: 255,
             }))
         }
         matrix.set_buf(&mut buf);
