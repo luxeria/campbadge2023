@@ -1,0 +1,4 @@
+#define skull_width 5
+#define skull_height 5
+static unsigned char skull_bits[] = {
+  0xe, 0x15, 0x1f, 0xe, 0xe };

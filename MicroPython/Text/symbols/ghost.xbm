@@ -1,0 +1,4 @@
+#define ghost_width 5
+#define ghost_height 5
+static unsigned char ghost_bits[] = {
+  0x1f, 0x15, 0x1f, 0x1f, 0x15 };

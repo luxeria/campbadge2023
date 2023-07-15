@@ -34,6 +34,7 @@ Zwei Beispielapplikationen in C++
 
   * [Simple](MicroPython/Simple/): Leds ansteuern
   * [Clock](MicroPython/Clock/): Eine binäre Uhr
+  * [Text](MicroPython/Text/): Lauftext
 
 
 #### [Rust](Rust/README.md)

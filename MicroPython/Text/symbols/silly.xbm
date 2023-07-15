@@ -1,0 +1,4 @@
+#define silly_width 5
+#define silly_height 5
+static unsigned char silly_bits[] = {
+  0x11, 0x0, 0x1f, 0x5, 0x7 };

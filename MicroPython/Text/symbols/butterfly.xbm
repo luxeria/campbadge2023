@@ -1,0 +1,4 @@
+#define butterfly_width 5
+#define butterfly_height 5
+static unsigned char butterfly_bits[] = {
+  0x1b, 0x1f, 0x4, 0x1f, 0x1b };

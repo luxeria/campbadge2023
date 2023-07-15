@@ -1,0 +1,4 @@
+#define duck_width 5
+#define duck_height 5
+static unsigned char duck_bits[] = {
+  0xc, 0x1c, 0xf, 0xe, 0x0 };

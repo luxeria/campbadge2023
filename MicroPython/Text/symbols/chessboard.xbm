@@ -1,0 +1,4 @@
+#define chessboard_width 5
+#define chessboard_height 5
+static unsigned char chessboard_bits[] = {
+  0xa, 0x15, 0xa, 0x15, 0xa };

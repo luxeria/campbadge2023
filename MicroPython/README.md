@@ -21,9 +21,9 @@ Ein Lauftext-Display. Zum Installieren folgendene Befehle ausführen:
     mpremote cp -r symbols/ :
     mpremote cp colorsys.py :
     mpremote cp marquee.py :
-    mpremote cp main.py.py :
+    mpremote cp main.py :
 
-Die einzelnen Buchstaben der Schrift können im `symbols`` Ordner via GIMP o.ä.
+Die einzelnen Buchstaben der Schrift können im `symbols` Ordner via GIMP o.ä.
 bearbeitet werden.
 
 ## Beispielprogramme ausführen

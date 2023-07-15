@@ -1,0 +1,4 @@
+#define music_crotchet_width 5
+#define music_crotchet_height 5
+static unsigned char music_crotchet_bits[] = {
+  0x4, 0x4, 0x4, 0x1c, 0x1c };

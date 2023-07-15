@@ -1,0 +1,4 @@
+#define arrow_s_width 5
+#define arrow_s_height 5
+static unsigned char arrow_s_bits[] = {
+  0x4, 0x4, 0x15, 0xe, 0x4 };

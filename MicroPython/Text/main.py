@@ -57,6 +57,6 @@ class Rainbow:
 # Rainbow colors the monochrome drawing calls from the Marquee class
 canvas = Rainbow(Matrix(din, 5, 5), brightness=0.5)
 
-m = marquee.text("Welcome to Lux Camp 2023 !!!")
+m = marquee.text("{arrow_w} Welcome to LuxCamp 2023 {heart} {arrow_e}")
 while m.update(canvas):
-    time.sleep(0.1)
+    time.sleep(0.15)

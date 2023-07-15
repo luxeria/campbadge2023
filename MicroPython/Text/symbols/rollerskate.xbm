@@ -1,0 +1,4 @@
+#define rollerskate_width 5
+#define rollerskate_height 5
+static unsigned char rollerskate_bits[] = {
+  0x3, 0x3, 0x1f, 0x1f, 0xa };

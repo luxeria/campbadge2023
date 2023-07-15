@@ -1,0 +1,4 @@
+#define meh_width 5
+#define meh_height 5
+static unsigned char meh_bits[] = {
+  0xa, 0x0, 0x2, 0x4, 0x8 };

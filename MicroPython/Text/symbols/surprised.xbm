@@ -1,0 +1,4 @@
+#define surprised_width 5
+#define surprised_height 5
+static unsigned char surprised_bits[] = {
+  0xa, 0x0, 0x4, 0xa, 0x4 };

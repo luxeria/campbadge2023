@@ -1,0 +1,4 @@
+#define angry_width 5
+#define angry_height 5
+static unsigned char angry_bits[] = {
+  0x11, 0xa, 0x0, 0x1f, 0x15 };

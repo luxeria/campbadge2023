@@ -1,0 +1,4 @@
+#define triangle_left_width 5
+#define triangle_left_height 5
+static unsigned char triangle_left_bits[] = {
+  0x10, 0x18, 0x14, 0x12, 0x1f };

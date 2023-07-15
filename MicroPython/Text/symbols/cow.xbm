@@ -1,0 +1,4 @@
+#define cow_width 5
+#define cow_height 5
+static unsigned char cow_bits[] = {
+  0x11, 0x11, 0x1f, 0xe, 0x4 };

@@ -1,0 +1,4 @@
+#define asleep_width 5
+#define asleep_height 5
+static unsigned char asleep_bits[] = {
+  0x0, 0x1b, 0x0, 0xe, 0x0 };

@@ -1,0 +1,4 @@
+#define tshirt_width 5
+#define tshirt_height 5
+static unsigned char tshirt_bits[] = {
+  0x1b, 0x1f, 0xe, 0xe, 0xe };

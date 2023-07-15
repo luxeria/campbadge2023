@@ -1,0 +1,4 @@
+#define umbrella_width 5
+#define umbrella_height 5
+static unsigned char umbrella_bits[] = {
+  0xe, 0x1f, 0x4, 0x14, 0xc };
