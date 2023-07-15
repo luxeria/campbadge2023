@@ -14,33 +14,34 @@
 //! * Implement the `LedMatrix` trait according to the physical properties of your matrix.
 //!
 //! ```
+//! use lux_camp_badge::led::{Animation, Color, LedMatrix};
 //! use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 //!
 //! // Matrix backend holding the frame buffer
 //! #[derive(Default)]
 //! struct MyMatrix(
 //!     // Match the phyisical matrix properties
-//!     [<<Self as LedMatrix>::Backend as SmartLedsWrite>::Color; <Self as LedMatrix>::AREA],
+//!     [Color<Self>; <Self as LedMatrix>::AREA],
 //! );
 //!
 //! // Any 5x5 matrix where the Ws2812Esp32Rmt driver just works:
 //! impl LedMatrix for MyMatrix {
 //!     const X: usize = 5;
 //!     const Y: usize = 5;
-//!     type Backend = Ws2812Esp32Rmt;
+//!     type Driver = Ws2812Esp32Rmt;
 //!
-//!     fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
+//!     fn read_buf(&self) -> &[Color<Self>] {
 //!         &self.0
 //!     }
 //!
-//!     fn set_buf(&mut self, buf: &mut [<Self::Backend as SmartLedsWrite>::Color]) {
+//!     fn set_buf(&mut self, buf: &mut [Color<Self>]) {
 //!         // A guard just in case something goes wrong as copy_from_slice would panic
-//!         if buf.len() == self.0.len() {
+//!         if buf.len() == <Self as LedMatrix>::AREA {
 //!             self.0.copy_from_slice(buf);
 //!         }
 //!     }
 //!
-//!     fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {
+//!     fn set_2d(&mut self, x: usize, y: usize, color: Color<Self>) {
 //!         // This highly depends on how your matrix is wired up
 //!         self.0[x * <Self as LedMatrix>::X + y] = color;
 //!     }
@@ -116,17 +117,17 @@ impl LedMatrix for DummyMatrix {
     const X: usize = 0;
     const Y: usize = 0;
 
-    type Backend = DummyBackend;
+    type Driver = DummyBackend;
 
-    fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
+    fn read_buf(&self) -> &[<Self::Driver as SmartLedsWrite>::Color] {
         unimplemented!()
     }
 
-    fn set_buf(&mut self, _buf: &mut [<Self::Backend as SmartLedsWrite>::Color]) {
+    fn set_buf(&mut self, _buf: &mut [<Self::Driver as SmartLedsWrite>::Color]) {
         unimplemented!()
     }
 
-    fn set_2d(&mut self, _x: usize, _y: usize, _color: <Self::Backend as SmartLedsWrite>::Color) {
+    fn set_2d(&mut self, _x: usize, _y: usize, _color: &<Self::Driver as SmartLedsWrite>::Color) {
         unimplemented!()
     }
 }
@@ -173,7 +174,7 @@ impl<S: LedMatrix> MatrixBuilder<S, Missing<AnimationSet>> {
 
 impl<S, B> MatrixBuilder<S, AnimationSet>
 where
-    S: LedMatrix<Backend = B> + Send + 'static,
+    S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
     <B as SmartLedsWrite>::Color: Clone,
@@ -181,7 +182,7 @@ where
     /// Start the matrix in a background thread.
     pub fn run(
         mut self,
-        driver: <S as LedMatrix>::Backend,
+        driver: <S as LedMatrix>::Driver,
     ) -> Result<Arc<Mutex<Option<Handle<S, B>>>>, Error<<B as SmartLedsWrite>::Error>> {
         let mut matrix = Matrix {
             animation: self.animation.take().unwrap(),
@@ -202,20 +203,20 @@ where
 /// This guarantees correct and thread-safe usage.
 pub struct Matrix<S, B>
 where
-    S: LedMatrix<Backend = B>,
+    S: LedMatrix<Driver = B>,
     B: SmartLedsWrite + Send,
     B::Error: Send,
 {
     animation: Box<dyn Animation<S> + Send>,
     backend: S,
-    driver: S::Backend,
+    driver: S::Driver,
     frame_time: Duration,
     tick: Duration,
 }
 
 impl<S, B> Matrix<S, B>
 where
-    S: LedMatrix<Backend = B> + Send + 'static,
+    S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
     <B as SmartLedsWrite>::Color: Clone,
@@ -277,14 +278,14 @@ where
 /// This allows for thread-safe sharing of the handle.
 pub struct Handle<S, B>(JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>>)
 where
-    S: LedMatrix<Backend = B>,
+    S: LedMatrix<Driver = B>,
     B: SmartLedsWrite + Send,
     B::Error: Send + Debug,
     <B as SmartLedsWrite>::Color: Clone;
 
 impl<S, B> Handle<S, B>
 where
-    S: LedMatrix<Backend = B> + Send + 'static,
+    S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
     <B as SmartLedsWrite>::Color: Clone,
@@ -312,12 +313,13 @@ where
     }
 }
 
+/// Change the animation of the matrix.
 pub fn update<S, B>(
     handle: &Arc<Mutex<Option<Handle<S, B>>>>,
     animation: Box<dyn Animation<S> + Send>,
 ) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
 where
-    S: LedMatrix<Backend = B> + Send + 'static,
+    S: LedMatrix<Driver = B> + Send + 'static,
     B: SmartLedsWrite + Send + 'static,
     B::Error: Send + Debug,
     <B as SmartLedsWrite>::Color: Clone,

@@ -4,15 +4,8 @@ pub mod rainbow;
 pub mod random;
 pub mod static_scene;
 
-/// Check if `now` is more than `amount` after `since`.
-/// Useful helper if you only want to draw at for example every N milliseconds.
-///
-/// Returns `None` if not enough time has passed yet.
-/// Otherwise returns the lag.
-pub fn wait_for(amount: Duration, since: Duration, now: Duration) -> Option<Duration> {
-    let threshold = since + amount;
-    if threshold <= now {
-        return Some(now - threshold);
-    }
-    None
+/// Check if `now` is more than `interval` after `since`.
+/// Useful helper if you only want to draw at for example every `interval` milliseconds.
+pub fn skip_frame(interval: Duration, since: Duration, now: Duration) -> bool {
+    since + interval > now
 }

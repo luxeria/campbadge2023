@@ -5,6 +5,8 @@ use smart_leds_trait::SmartLedsWrite;
 pub mod hsv_rgb_convert;
 pub mod matrix;
 
+pub type Color<T> = <<T as LedMatrix>::Driver as SmartLedsWrite>::Color;
+
 /// Configuration trait for implementing the LED matrix being used.
 ///
 /// Types implementing this trait want to use an internal framebuffer.
@@ -29,27 +31,21 @@ pub trait LedMatrix {
     const VOLUME: usize = Self::X * Self::Y * Self::Z;
 
     /// The driver for the LED matrix.
-    type Backend: SmartLedsWrite;
+    type Driver: SmartLedsWrite;
 
     /// Read the entire internal frame buffer.
-    fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color];
+    fn read_buf(&self) -> &[Color<Self>];
 
     /// Write to the entire internal frame buffer.
-    fn set_buf(&mut self, buf: &mut [<Self::Backend as SmartLedsWrite>::Color]);
+    fn set_buf(&mut self, buf: &mut [Color<Self>]);
 
     /// Write a pixel to the given `x` / `y` coordinate of your 2D LED Matrix.
-    fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color);
+    fn set_2d(&mut self, x: usize, y: usize, color: &Color<Self>);
 
     /// Write a pixel to the given `x` / `y` `z` coordinate of your LED Cube.
     /// 2D LED matrices don't need to implement this function, it'll default to set_2D.
     #[allow(unused)]
-    fn set_3d(
-        &mut self,
-        x: usize,
-        y: usize,
-        z: usize,
-        color: <Self::Backend as SmartLedsWrite>::Color,
-    ) {
+    fn set_3d(&mut self, x: usize, y: usize, z: usize, color: &Color<Self>) {
         Self::set_2d(self, x, y, color)
     }
 }

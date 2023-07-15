@@ -22,12 +22,10 @@ impl Inner {
     // Helper that returns true if the current frame should be skipped.
     // Otherwise last_tick is updated to the current one.
     fn skip_frame(&mut self, tick: Duration) -> bool {
-        if self
-            .fading_speed
-            .map(|amount| crate::wait_for(amount, self.last_tick, tick))
-            .is_none()
-        {
-            return true;
+        if let Some(interval) = self.fading_speed {
+            if crate::skip_frame(interval, self.last_tick, tick) {
+                return true;
+            }
         }
 
         self.last_tick = tick;
@@ -44,7 +42,7 @@ impl FadingRainbow {
     }
 }
 
-impl<B, C: LedMatrix<Backend = B>> Animation<C> for FadingRainbow
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for FadingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
@@ -74,7 +72,7 @@ impl SlidingRainbow {
     }
 }
 
-impl<B, C: LedMatrix<Backend = B>> Animation<C> for SlidingRainbow
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for SlidingRainbow
 where
     B: SmartLedsWrite<Color = RGB8>,
 {

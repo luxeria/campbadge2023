@@ -9,13 +9,12 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::wifi::EspWifi;
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use lux_camp_badge::led::matrix::{self, Handle, Matrix};
-use lux_camp_badge::led::{Animation, LedMatrix};
+use lux_camp_badge::led::{Animation, Color, LedMatrix};
 use lux_camp_badge_animations::rainbow::{FadingRainbow, SlidingRainbow};
 use lux_camp_badge_animations::random::RandomAnimation;
 use lux_camp_badge_animations::static_scene::Scene;
 use serde::Deserialize;
-use smart_leds::RGB8;
-use smart_leds_trait::SmartLedsWrite;
+use smart_leds_trait::RGB8;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -28,34 +27,36 @@ use esp_idf_svc::{
 };
 
 /// Configuration of our LED matrix
+const LED_PIN: u32 = 1;
+const LED_CHANNEL: u8 = 0;
+static INDEX_HTML: &str = include_str!("json_post_handler.html");
+
 #[derive(Default)]
-struct LuxBadge(
-    [<<Self as LedMatrix>::Backend as SmartLedsWrite>::Color; <Self as LedMatrix>::AREA],
-);
+struct LuxBadge([Color<Self>; <Self as LedMatrix>::AREA]);
 
 impl LedMatrix for LuxBadge {
     const X: usize = 5;
     const Y: usize = 5;
-    type Backend = Ws2812Esp32Rmt;
+    type Driver = Ws2812Esp32Rmt;
 
-    fn read_buf(&self) -> &[<Self::Backend as SmartLedsWrite>::Color] {
+    fn read_buf(&self) -> &[Color<Self>] {
         &self.0
     }
 
-    fn set_buf(&mut self, buf: &mut [<Self::Backend as SmartLedsWrite>::Color]) {
-        if buf.len() == self.0.len() {
+    fn set_buf(&mut self, buf: &mut [Color<Self>]) {
+        if buf.len() == <Self as LedMatrix>::AREA {
             self.0.copy_from_slice(buf);
         }
     }
 
-    fn set_2d(&mut self, x: usize, y: usize, color: <Self::Backend as SmartLedsWrite>::Color) {
-        self.0[x * <Self as LedMatrix>::X + y] = color;
+    fn set_2d(&mut self, x: usize, y: usize, color: &Color<Self>) {
+        self.0[(y * <Self as LedMatrix>::Y) + (<Self as LedMatrix>::X - 1 - x)] = *color;
     }
 }
 
-const LED_PIN: u32 = 1;
-const LED_CHANNEL: u8 = 0;
-static INDEX_HTML: &str = include_str!("json_post_handler.html");
+/// The default static scene conveniently turns our LED matrix off.
+type Off =
+    Box<Scene<Color<LuxBadge>, { <LuxBadge as LedMatrix>::X }, { <LuxBadge as LedMatrix>::Y }>>;
 
 #[toml_cfg::toml_config]
 pub struct Config {
@@ -88,6 +89,27 @@ struct FormDataAnimation<'a> {
 pub enum Animations {
     Rainbow,
     RainbowSlide,
+}
+
+type FrameBuf = [[Color<LuxBadge>; <LuxBadge as LedMatrix>::Y]; <LuxBadge as LedMatrix>::X];
+
+impl<'a> From<&FormData<'a>> for FrameBuf {
+    fn from(val: &FormData<'a>) -> Self {
+        let mut buf = FrameBuf::default();
+        let pixels = val.pixels.split(',').collect::<Vec<_>>();
+        for y in 0..<LuxBadge as LedMatrix>::Y {
+            for x in 0..<LuxBadge as LedMatrix>::X {
+                buf[<LuxBadge as LedMatrix>::Y - 1 - y][x] = hex::decode(
+                    pixels[y * <LuxBadge as LedMatrix>::Y + x]
+                        .strip_prefix('#')
+                        .unwrap(),
+                )
+                .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
+                .unwrap()
+            }
+        }
+        buf
+    }
 }
 
 fn init() -> EspNvsPartition<NvsDefault> {
@@ -145,11 +167,7 @@ fn start_web_server(
                 .map(|form| {
                     let animation: Box<dyn Animation<LuxBadge> + Send + 'static> = match form.mode {
                         "animation" => Box::new(SlidingRainbow::new(4, None)),
-                        "interactive" | "off" => Box::new(Scene(vec![
-                            RGB8::new(0, 0, 0);
-                            <LuxBadge as LedMatrix>::AREA
-                        ])),
-                        _ => return Ok(()),
+                        _ => Off::default(),
                     };
                     matrix::update(&h, animation).unwrap();
                     write!(resp, "Hello, {}", form.mode)
@@ -182,10 +200,7 @@ fn start_web_server(
                             "rainbow" => Box::new(FadingRainbow::new(1, None)),
                             "rainbow-slide" => Box::new(SlidingRainbow::new(5, None)),
                             "random" => Box::<RandomAnimation>::default(),
-                            _ => Box::new(Scene(vec![
-                                RGB8::new(0, 0, 0);
-                                <LuxBadge as LedMatrix>::AREA
-                            ])),
+                            _ => Off::default(),
                         };
                     matrix::update(&h, animation).unwrap();
                     write!(resp, "Displaying {}", form.animation)
@@ -212,17 +227,8 @@ fn start_web_server(
 
             serde_json::from_slice::<FormData>(&buf)
                 .map(|form| {
-                    let pixels = form
-                        .pixels
-                        .split(',')
-                        .map(|pixel| {
-                            hex::decode(pixel.strip_prefix('#').unwrap())
-                                .map(|bytes| RGB8::new(bytes[0], bytes[1], bytes[2]))
-                                .unwrap()
-                        })
-                        .collect();
-                    matrix::update(&led_matrix, Box::new(Scene(pixels))).unwrap();
-                    write!(resp, "Hello, {} Color:{}", form.pixels, form.color)
+                    matrix::update(&led_matrix, Box::new(Scene((&form).into()))).unwrap();
+                    write!(resp, "Interactive {:?} Color:{}", form.pixels, form.color)
                 })
                 .map_err(|_| resp.write_all("JSON error".as_bytes()))??;
 

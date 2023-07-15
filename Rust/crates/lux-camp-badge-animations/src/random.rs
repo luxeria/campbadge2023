@@ -18,12 +18,12 @@ impl Default for RandomAnimation {
     }
 }
 
-impl<B, C: LedMatrix<Backend = B>> Animation<C> for RandomAnimation
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for RandomAnimation
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn update(&mut self, tick: Duration, matrix: &mut C) -> bool {
-        if crate::wait_for(Duration::from_millis(250), self.last_tick, tick).is_none() {
+        if crate::skip_frame(Duration::from_millis(250), self.last_tick, tick) {
             return false;
         }
         self.last_tick = tick;
