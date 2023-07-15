@@ -331,6 +331,7 @@ where
     fn brightness(self, level: Option<u8>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
         let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
         matrix.brightness = level;
+        matrix.draw(matrix.backend.read_buf().to_vec())?;
         Self::start(matrix)
     }
 }
