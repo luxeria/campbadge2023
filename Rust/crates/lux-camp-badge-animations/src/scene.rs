@@ -4,9 +4,9 @@ use lux_camp_badge::led::{Animation, LedMatrix};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 
 /// Draw a static image to the LED matrix.
-pub struct Scene<Color, const X: usize, const Y: usize>(pub [[Color; Y]; X]);
+pub struct Static<Color, const X: usize, const Y: usize>(pub [[Color; Y]; X]);
 
-impl<const X: usize, const Y: usize> Default for Scene<RGB8, X, Y>
+impl<const X: usize, const Y: usize> Default for Static<RGB8, X, Y>
 where
     RGB8: Default + Copy,
 {
@@ -16,7 +16,7 @@ where
 }
 
 impl<Color: Default, const X: usize, const Y: usize, B, C: LedMatrix<Driver = B>> Animation<C>
-    for Scene<Color, X, Y>
+    for Static<Color, X, Y>
 where
     B: SmartLedsWrite<Color = Color>,
 {

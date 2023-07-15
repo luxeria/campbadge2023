@@ -15,7 +15,7 @@
 //!
 //! ```
 //! use lux_camp_badge::led::{Animation, Color, LedMatrix};
-//! use lux_camp_badge_animations::{random::Random, rainbow::SlidingRainbow};
+//! use lux_camp_badge_animations::prelude::*;
 //! use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
 //!
 //! // Matrix backend holding the frame buffer
@@ -48,15 +48,15 @@
 //!     }
 //! }
 //!
-//! // Instantiate and start the matrix with the random animation
+//! // Instantiate and start the matrix with the random::Flip animation
 //! let handle = Matrix::new(MyMatrix::default())
-//!     .animation(Random::boxed(0))
+//!     .animation(random::Flip::build(0))
 //!     .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())?;
 //!
 //! // ...
 //!
 //! // Change the animation to a shiny rainbow:
-//! matrix::update(&handle, SlidingRainbow::boxed(5, None))?;
+//! matrix::update(&handle, rainbow::Sliding::build(5, None))?;
 //! ```
 use esp_idf_svc::systime::EspSystemTime;
 use lazy_static::lazy_static;

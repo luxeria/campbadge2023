@@ -19,10 +19,10 @@ impl Inner {
 }
 
 /// Fill the entire screen with a fading rainbow.
-pub struct FadingRainbow(Inner);
+pub struct Fade(Inner);
 
-impl FadingRainbow {
-    pub fn boxed<Matrix, Driver>(
+impl Fade {
+    pub fn build<Matrix, Driver>(
         step_size: u8,
         fading_speed: Option<Duration>,
     ) -> Box<dyn Animation<Matrix> + Send>
@@ -34,7 +34,7 @@ impl FadingRainbow {
     }
 }
 
-impl<B, C: LedMatrix<Driver = B>> Animation<C> for FadingRainbow
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for Fade
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
@@ -55,10 +55,10 @@ where
 }
 
 /// Fill the entire screen with a sliding rainbow.
-pub struct SlidingRainbow(Inner);
+pub struct Slide(Inner);
 
-impl SlidingRainbow {
-    pub fn boxed<Matrix, Driver>(
+impl Slide {
+    pub fn build<Matrix, Driver>(
         step_size: u8,
         fading_speed: Option<Duration>,
     ) -> Box<dyn Animation<Matrix> + Send>
@@ -70,7 +70,7 @@ impl SlidingRainbow {
     }
 }
 
-impl<B, C: LedMatrix<Driver = B>> Animation<C> for SlidingRainbow
+impl<B, C: LedMatrix<Driver = B>> Animation<C> for Slide
 where
     B: SmartLedsWrite<Color = RGB8>,
 {
