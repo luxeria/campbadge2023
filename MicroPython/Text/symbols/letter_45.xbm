@@ -1,0 +1,4 @@
+#define letter_45_width 4
+#define letter_45_height 5
+static char letter_45_bits[] = {
+  0x00, 0x00, 0x07, 0x00, 0x00, };

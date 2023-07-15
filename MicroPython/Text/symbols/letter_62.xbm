@@ -1,0 +1,4 @@
+#define letter_62_width 3
+#define letter_62_height 5
+static unsigned char letter_62_bits[] = {
+   0x00, 0x01, 0x02, 0x01, 0x00 };

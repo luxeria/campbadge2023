@@ -14,6 +14,18 @@ Spalte zeigt die aktuelle Stunde, die zweite und dritte Spalte zeigen die
 Minute und die vierte und fünfte Spalte zeigen die Sekunden. Die initiale
 Uhrzeit wird über WLAN und NTP geholt.
 
+### [Text](Text/main.py)
+
+Ein Lauftext-Display. Zum Installieren folgendene Befehle ausführen:
+
+    mpremote cp -r symbols/ :
+    mpremote cp colorsys.py :
+    mpremote cp marquee.py :
+    mpremote cp main.py.py :
+
+Die einzelnen Buchstaben der Schrift können im `symbols`` Ordner via GIMP o.ä.
+bearbeitet werden.
+
 ## Beispielprogramme ausführen
 
 Flashe zuerst eine aktuelle Micropython-Version auf dein Board. Für den M5Stamp

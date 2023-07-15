@@ -1,0 +1,4 @@
+#define letter_95_width 10
+#define letter_95_height 2
+static char letter_95_bits[] = {
+  0xFF, 0x00, 0xFF, 0x00, };

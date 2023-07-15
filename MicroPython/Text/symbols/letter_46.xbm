@@ -1,0 +1,4 @@
+#define letter_46_width 2
+#define letter_46_height 5
+static char letter_46_bits[] = {
+  0x00, 0x00, 0x00, 0x00, 0x01, };

@@ -1,0 +1,4 @@
+#define letter_64_width 5
+#define letter_64_height 5
+static char letter_64_bits[] = {
+  0x0F, 0x09, 0x0D, 0x01, 0x0F, };

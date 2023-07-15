@@ -1,0 +1,4 @@
+#define letter_44_width 3
+#define letter_44_height 5
+static unsigned char letter_44_bits[] = {
+   0x00, 0x00, 0x00, 0x01, 0x01 };

@@ -1,0 +1,4 @@
+#define letter_105_width 4
+#define letter_105_height 5
+static unsigned char letter_105_bits[] = {
+   0x07, 0x02, 0x02, 0x02, 0x07 };

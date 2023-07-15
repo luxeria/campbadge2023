@@ -1,0 +1,4 @@
+#define letter_83_width 4
+#define letter_83_height 5
+static unsigned char letter_83_bits[] = {
+   0x07, 0x01, 0x02, 0x04, 0x07 };

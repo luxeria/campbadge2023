@@ -1,0 +1,4 @@
+#define letter_34_width 4
+#define letter_34_height 5
+static char letter_34_bits[] = {
+  0x05, 0x05, 0x00, 0x00, 0x00, };

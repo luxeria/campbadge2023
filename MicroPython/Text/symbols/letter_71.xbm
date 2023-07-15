@@ -1,0 +1,4 @@
+#define letter_71_width 5
+#define letter_71_height 5
+static unsigned char letter_71_bits[] = {
+   0x06, 0x01, 0x0d, 0x09, 0x06 };

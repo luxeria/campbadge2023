@@ -1,0 +1,4 @@
+#define letter_85_width 5
+#define letter_85_height 5
+static char letter_85_bits[] = {
+  0x09, 0x09, 0x09, 0x09, 0x06, };

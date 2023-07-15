@@ -1,0 +1,4 @@
+#define letter_80_width 4
+#define letter_80_height 5
+static char letter_80_bits[] = {
+  0x03, 0x05, 0x03, 0x01, 0x01, };

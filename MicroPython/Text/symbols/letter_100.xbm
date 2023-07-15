@@ -1,0 +1,4 @@
+#define letter_68_width 4
+#define letter_68_height 5
+static char letter_68_bits[] = {
+  0x03, 0x05, 0x05, 0x05, 0x03, };
