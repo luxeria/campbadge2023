@@ -20,6 +20,13 @@ cargo run --release --bin simple # flash the simple example
 cargo run --release --bin advanced # flash the advanced example
 ```
 
+Wifi-Credentials können in ```cfg.toml``` hinterlegt werden und werden automatisch mitkompiliert:
+```toml
+[advanced]
+wifi_ssid = "DEINE SSID"
+wifi_psk = "Dein streng geheimes Wifi-Passwort!"
+```
+
 ## Toolchain für Embedded Rust installieren
 ### Annahme:
 * Rust ist installiert
