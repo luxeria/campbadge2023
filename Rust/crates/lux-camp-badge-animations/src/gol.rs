@@ -122,7 +122,6 @@ where
 
         self.alive = false;
         let mut next_gen = [[false; Y]; X];
-        #[allow(clippy::needless_range_loop)] // not so needless here after all
         for y in 0..<C as LedMatrix>::Y {
             for x in 0..<C as LedMatrix>::X {
                 let new_state = match self.neighbors::<C>(x, y) {

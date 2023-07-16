@@ -1,9 +1,9 @@
 use lux_camp_badge::led::{Animation, LedMatrix};
 
-use rand::{rngs::SmallRng, Rng, RngCore, SeedableRng};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
+use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
-use smart_leds::hsv::{Hsv, hsv2rgb};
 
 struct PerlinNoiseLight {
     seed: Vec<Vec<Vec<u8>>>,
@@ -14,14 +14,14 @@ impl PerlinNoiseLight {
     fn new(width: usize, height: usize) -> PerlinNoiseLight {
         let mut rnd = SmallRng::seed_from_u64(1);
         let mut seed = vec![vec![vec![127; 100]; height]; width];
-        for x in 0..width{
-            for y in 0..height{
-                for t in 0..100{
+        for x in 0..width {
+            for y in 0..height {
+                for t in 0..100 {
                     seed[x][y][t] = rnd.gen();
                 }
             }
         }
-        PerlinNoiseLight { seed , frame: 0}
+        PerlinNoiseLight { seed, frame: 0 }
     }
 }
 
@@ -48,10 +48,14 @@ where
     fn update(&mut self, _tick: Duration, matrix: &mut C) {
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
         for _ in 0..<C as LedMatrix>::AREA {
-            buf.push( hsv2rgb(Hsv{hue: self.0.seed[1][1][self.0.frame],sat:255,val:25}));
+            buf.push(hsv2rgb(Hsv {
+                hue: self.0.seed[1][1][self.0.frame],
+                sat: 255,
+                val: 25,
+            }));
         }
         let frame = self.0.frame;
-        self.0.frame = (frame +1) % 100;
+        self.0.frame = (frame + 1) % 100;
 
         matrix.set_buf(&mut buf);
     }
