@@ -53,7 +53,7 @@ where
                 buf.push(hsv2rgb(Hsv {
                     hue,
                     sat: 255,
-                    val: 25,
+                    val: 255,
                 }));
             }
         }
