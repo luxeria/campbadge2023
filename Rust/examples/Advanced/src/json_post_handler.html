@@ -38,7 +38,7 @@
     <select id="mode">
         <option value="animation">Animation</option>
         <option value="interactive">Interactive</option>
-        <option value="brightness">Brightness</option>
+        <!--<option value="brightness">Brightness</option>-->
         <option value="off">Off</option>
     </select>
     <div id="cards">
@@ -73,18 +73,18 @@
             </form>
         </div>
 
-        <div id="brightness-card" class="card" style="display: none">
-            <h1>Brightness</h1>
-
-            <input id="brightness-slider" type="range" min="1" max="50" value="25">
-            <input id="brightness-button" type="button" value="Disable dimming (better performance)">
-        </div>
 
         <div id="off-card" class="card" style="display: none">
             <h1>Off</h1>
         </div>
     </div>
 
+    <div id="brightness-card">
+        <h1>Brightness</h1>
+
+        <input id="brightness-slider" type="range" min="1" max="50" value="25">
+        <input id="brightness-button" type="button" value="Disable dimming (better performance)">
+    </div>
     <p id="server-resp"></p>
 
     <script>

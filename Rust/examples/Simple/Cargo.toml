@@ -21,14 +21,14 @@ embassy = ["esp-idf-hal?/embassy-sync", "esp-idf-hal?/critical-section", "esp-id
 
 [dependencies]
 anyhow = "*"
-log = { version = "0.4.17", default-features = false }
+log = { version = "0.4.19", default-features = false }
 esp-idf-sys = { version = "0.33", default-features = false }
 esp-idf-hal = { version = "0.41", optional = true, default-features = false }
 esp-idf-svc = { version = "0.46", optional = true, default-features = false }
 embedded-svc = { version = "0.25", optional = true, default-features = false }
 smart-leds = "*"
 smart-leds-trait = { version = "0.2", optional = true }
-embedded-graphics-core = { version = "0.3", optional = true }
+embedded-graphics-core = { version = "0.4", optional = true }
 ws2812-esp32-rmt-driver = "*"
 
 
