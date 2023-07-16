@@ -4,13 +4,17 @@
 // How many leds in your strip?
 #define NUM_LEDS 25
 
-#define DATA_PIN 10
+#define DATA_PIN 1
+#define VCC_PIN 0
 
 // Define the array of leds
 CRGB leds[NUM_LEDS];
 
 void setup() {
   // put your setup code here, to run once:
+    pinMode(VCC_PIN,OUTPUT);
+    digitalWrite(VCC_PIN,1);
+    delay(10);
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering is assumed
     FastLED.setBrightness(25);
 }
