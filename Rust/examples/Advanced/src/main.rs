@@ -180,6 +180,7 @@ fn start_web_server(
                             "rainbow-slide" => rainbow::Slide::build(5, None),
                             "flip" => random::Flip::build(seed),
                             "random" => random::P30::build(seed),
+                            "perlin" => noise_animation::PerlinAnimation::build(),
                             "gol" => gol::Gol::<
                                 Color<LuxBadge>,
                                 { <LuxBadge as LedMatrix>::X },
