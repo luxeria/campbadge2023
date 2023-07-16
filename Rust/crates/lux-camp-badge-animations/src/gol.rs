@@ -48,38 +48,24 @@ impl<Color, const X: usize, const Y: usize> Gol<Color, X, Y> {
 }
 
 impl<Color, const X: usize, const Y: usize> Gol<Color, X, Y> {
-    pub fn neighbors<C>(&self, x: usize, y: usize) -> usize
+    #[inline(always)]
+    pub fn neighbors<C>(&self, x: usize, y: usize) -> u8
     where
         C: LedMatrix,
     {
-        let mut alive = 0;
+        let x_over = (x + 1) % X;
+        let x_under = (x + X - 1) % X;
+        let y_over = (y + 1) % Y;
+        let y_under = (y + X - 1) % Y;
 
-        if self.cells[y][if x > 0 { x - 1 } else { X - 1 }] {
-            alive += 1
-        }
-        if self.cells[y][if x < X - 1 { x + 1 } else { 0 }] {
-            alive += 1
-        }
-        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][x] {
-            alive += 1
-        }
-        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][x] {
-            alive += 1
-        }
-        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][if x > 0 { x - 1 } else { X - 1 }] {
-            alive += 1
-        }
-        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][if x > 0 { x - 1 } else { X - 1 }] {
-            alive += 1
-        }
-        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][if x < X - 1 { x + 1 } else { 0 }] {
-            alive += 1
-        }
-        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][if x < X - 1 { x + 1 } else { 0 }] {
-            alive += 1
-        }
-
-        alive
+        self.cells[y][x_under] as u8
+            + self.cells[y][x_over] as u8
+            + self.cells[y_under][x] as u8
+            + self.cells[y_over][x] as u8
+            + self.cells[y_under][x_under] as u8
+            + self.cells[y_over][x_under] as u8
+            + self.cells[y_under][x_over] as u8
+            + self.cells[y_over][x_over] as u8
     }
 }
 
