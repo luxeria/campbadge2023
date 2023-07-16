@@ -1,27 +1,21 @@
 use lux_camp_badge::led::{Animation, LedMatrix};
 
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use glm;
 use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use std::time::Duration;
 
 struct PerlinNoiseLight {
-    seed: Vec<Vec<Vec<u8>>>,
-    frame: usize,
+    frame: f32,
+    scale_factor: f32,
 }
 
 impl PerlinNoiseLight {
-    fn new(width: usize, height: usize) -> PerlinNoiseLight {
-        let mut rnd = SmallRng::seed_from_u64(1);
-        let mut seed = vec![vec![vec![127; 100]; height]; width];
-        for x in 0..width {
-            for y in 0..height {
-                for t in 0..100 {
-                    seed[x][y][t] = rnd.gen();
-                }
-            }
+    fn new(scale_factor: f32) -> PerlinNoiseLight {
+        PerlinNoiseLight {
+            frame: 0.,
+            scale_factor,
         }
-        PerlinNoiseLight { seed, frame: 0 }
     }
 }
 
@@ -33,7 +27,7 @@ impl PerlinAnimation {
         Matrix: LedMatrix<Driver = Driver>,
         Driver: SmartLedsWrite<Color = RGB8>,
     {
-        Box::new(Self(PerlinNoiseLight::new(Matrix::X, Matrix::Y)))
+        Box::new(Self(PerlinNoiseLight::new(0.05)))
     }
 }
 
@@ -42,20 +36,28 @@ where
     B: SmartLedsWrite<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
-        Some(Duration::from_millis(250))
+        Some(Duration::from_millis(100))
     }
 
     fn update(&mut self, _tick: Duration, matrix: &mut C) {
         let mut buf = Vec::with_capacity(<C as LedMatrix>::AREA);
-        for _ in 0..<C as LedMatrix>::AREA {
-            buf.push(hsv2rgb(Hsv {
-                hue: self.0.seed[1][1][self.0.frame],
-                sat: 255,
-                val: 25,
-            }));
-        }
         let frame = self.0.frame;
-        self.0.frame = (frame + 1) % 100;
+        for x in 0..<C as LedMatrix>::X {
+            for y in 0..<C as LedMatrix>::Y {
+                let hue = glm::builtin::noise1(glm::vec3(
+                    x as f32 * self.0.scale_factor,
+                    y as f32 * self.0.scale_factor,
+                    frame,
+                ));
+                let hue = ((hue * 255.0) + 127.0) as u8;
+                buf.push(hsv2rgb(Hsv {
+                    hue,
+                    sat: 255,
+                    val: 25,
+                }));
+            }
+        }
+        self.0.frame = frame + 0.05;
 
         matrix.set_buf(&mut buf);
     }

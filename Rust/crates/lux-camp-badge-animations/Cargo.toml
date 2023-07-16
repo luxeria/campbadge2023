@@ -8,5 +8,6 @@ edition = "2021"
 rand = { version="0.8", default-features = false, features = ["small_rng"] }
 smart-leds = "0.3"
 smart-leds-trait = "0.2"
+glm = "0.2.3"
 
 lux-camp-badge = { path = "../lux-camp-badge" }
