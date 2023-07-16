@@ -186,7 +186,7 @@ fn start_web_server(
                                 { <LuxBadge as LedMatrix>::X },
                                 { <LuxBadge as LedMatrix>::Y },
                             >::build(
-                                seed, 0.5, Some(256), Some(Duration::from_millis(250))
+                                seed, 0.5, Some(128), Some(Duration::from_millis(250))
                             ),
                             _ => Off::default(),
                         };

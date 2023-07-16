@@ -252,7 +252,10 @@ where
 
     // The smart leds write trait takes an iterator instead just a slice to it's color type
     // (maybe IntoIter<AsRef<Color>> would work too) so this is not zero copy.
-    fn draw<I>(&mut self, pixels: I) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
+    fn draw<I>(
+        &mut self,
+        pixels: I,
+    ) -> Result<(), crate::led::matrix::Error<<B as SmartLedsWrite>::Error>>
     where
         I: IntoIterator<Item = <B as SmartLedsWrite>::Color>,
     {

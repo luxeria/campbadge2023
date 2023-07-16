@@ -54,29 +54,28 @@ impl<Color, const X: usize, const Y: usize> Gol<Color, X, Y> {
     {
         let mut alive = 0;
 
-        if x > 0 && self.cells[y][x - 1] {
+        if self.cells[y][if x > 0 { x - 1 } else { X - 1 }] {
             alive += 1
         }
-        if x < <C as LedMatrix>::X - 1 && self.cells[y][x + 1] {
+        if self.cells[y][if x < X - 1 { x + 1 } else { 0 }] {
             alive += 1
         }
-        if y > 0 && self.cells[y - 1][x] {
+        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][x] {
             alive += 1
         }
-        if y < <C as LedMatrix>::Y - 1 && self.cells[y + 1][x] {
+        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][x] {
             alive += 1
         }
-
-        if x > 0 && y > 0 && self.cells[y - 1][x - 1] {
+        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][if x > 0 { x - 1 } else { X - 1 }] {
             alive += 1
         }
-        if x > 0 && y < <C as LedMatrix>::Y - 1 && self.cells[y + 1][x - 1] {
+        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][if x > 0 { x - 1 } else { X - 1 }] {
             alive += 1
         }
-        if x < <C as LedMatrix>::X - 1 && y > 0 && self.cells[y - 1][x + 1] {
+        if self.cells[if y > 0 { y - 1 } else { Y - 1 }][if x < X - 1 { x + 1 } else { 0 }] {
             alive += 1
         }
-        if x < <C as LedMatrix>::X - 1 && y < <C as LedMatrix>::Y - 1 && self.cells[y + 1][x + 1] {
+        if self.cells[if y < Y - 1 { y + 1 } else { 0 }][if x < X - 1 { x + 1 } else { 0 }] {
             alive += 1
         }
 
