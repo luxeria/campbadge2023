@@ -36,6 +36,7 @@ hex = "0.4.3"
 
 lux-camp-badge = { path = "../../crates/lux-camp-badge" }
 lux-camp-badge-animations = { path = "../../crates/lux-camp-badge-animations" }
+bytemuck = "1.13.1"
 
 [build-dependencies]
 embuild = "0.31.2"

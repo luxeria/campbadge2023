@@ -11,21 +11,52 @@ use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_svc::wifi::EspWifi;
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use lux_camp_badge::led::matrix::{self, Handle, Matrix};
-use lux_camp_badge::led::smart_led_write::SmartLedsWriteDriver;
-use lux_camp_badge::led::{Animation, Color, LedMatrix};
+use lux_camp_badge::led::{Animation, Color, LedMatrix, WriteLeds};
 use lux_camp_badge_animations::prelude::*;
 use rgb::RGB8;
 use serde::Deserialize;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
-use ws2812_esp32_rmt_driver::Ws2812Esp32Rmt;
+use ws2812_esp32_rmt_driver::{Ws2812Esp32RmtDriver, Ws2812Esp32RmtDriverError};
 
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvsPartition, NvsDefault};
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     http::server::{Configuration, EspHttpServer},
 };
+
+struct LedDriver {
+    driver: Ws2812Esp32RmtDriver,
+    buffer: Vec<u8>,
+}
+
+impl LedDriver {
+    fn new(led_channel: u8, gpio_pin: u32) -> Result<Self, Ws2812Esp32RmtDriverError> {
+        Ok(Self {
+            driver: Ws2812Esp32RmtDriver::new(led_channel, gpio_pin)?,
+            buffer: Vec::new(),
+        })
+    }
+}
+
+impl WriteLeds for LedDriver {
+    type Color = RGB8;
+    type Error = Ws2812Esp32RmtDriverError;
+
+    fn write(&mut self, buf: &[Self::Color]) -> Result<(), Self::Error> {
+        self.buffer.clear();
+        self.buffer.reserve(buf.len() * 3);
+        
+        for c in buf {
+            self.buffer.push(c.g);
+            self.buffer.push(c.r);
+            self.buffer.push(c.b);
+        }
+
+        self.driver.write(&self.buffer)
+    }
+}
 
 /// Configuration of our LED matrix
 const LED_PIN: u32 = 1;
@@ -38,7 +69,7 @@ struct LuxBadge([Color<Self>; <Self as LedMatrix>::AREA]);
 impl LedMatrix for LuxBadge {
     const X: usize = 5;
     const Y: usize = 5;
-    type Driver = SmartLedsWriteDriver<Ws2812Esp32Rmt>;
+    type Driver = LedDriver;
 
     fn read_buf(&self) -> &[Color<Self>] {
         &self.0
@@ -132,7 +163,7 @@ fn connect_wifi(
 }
 
 fn start_web_server(
-    led_matrix: Arc<Mutex<Option<Handle<LuxBadge, SmartLedsWriteDriver<Ws2812Esp32Rmt>>>>>,
+    led_matrix: Arc<Mutex<Option<Handle<LuxBadge, LedDriver>>>>,
 ) -> EspHttpServer {
     let mut server = EspHttpServer::new(&Configuration::default()).unwrap();
 
@@ -260,9 +291,7 @@ fn main() -> ! {
     // Setup HTTP server and LED matrix
     let led_matrix = Matrix::new(LuxBadge::default())
         .animation(random::P30::build(EspSystemTime {}.now().as_millis() as u64))
-        .run(SmartLedsWriteDriver::new(
-            Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap(),
-        ))
+        .run(LedDriver::new(LED_CHANNEL, LED_PIN).unwrap())
         .unwrap();
     let _wifi = connect_wifi(modem);
     let _server = start_web_server(led_matrix);
