@@ -239,7 +239,7 @@ where
 
     fn init_animation(&mut self) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
         self.frame_rate = self.animation.init(&mut self.backend);
-        self.draw(self.backend.read_buf().to_vec())
+        self.draw_framebuffer()
     }
 
     fn set_animation(
@@ -250,17 +250,15 @@ where
         self.init_animation()
     }
 
-    // The smart leds write trait takes an iterator instead just a slice to it's color type
-    // (maybe IntoIter<AsRef<Color>> would work too) so this is not zero copy.
-    fn draw<I>(
+    // Draws the current frame buffer. This is allocation-free (assuming Color::clone()
+    // is allocation-free). This is not zero-copy, because the SmartLedsWrite
+    // requires an iterator yielding color values instead of a slice of colors.
+    fn draw_framebuffer(
         &mut self,
-        pixels: I,
-    ) -> Result<(), crate::led::matrix::Error<<B as SmartLedsWrite>::Error>>
-    where
-        I: IntoIterator<Item = <B as SmartLedsWrite>::Color>,
-    {
+    ) -> Result<(), crate::led::matrix::Error<<B as SmartLedsWrite>::Error>> {
+        let pixels = self.backend.read_buf().into_iter().cloned();
         match self.brightness {
-            Some(level) => self.driver.write(pixels.into_iter().map(|mut pixel| {
+            Some(level) => self.driver.write(pixels.map(|mut pixel| {
                 pixel.dimm(level);
                 pixel
             })),
@@ -289,7 +287,7 @@ where
 
             self.tick = now;
             self.animation.update(now, &mut self.backend);
-            self.draw(self.backend.read_buf().to_vec())?;
+            self.draw_framebuffer()?;
         })
     }
 }
@@ -334,7 +332,7 @@ where
     fn brightness(self, level: Option<u8>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
         let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
         matrix.brightness = level;
-        matrix.draw(matrix.backend.read_buf().to_vec())?;
+        matrix.draw_framebuffer()?;
         Self::start(matrix)
     }
 }
