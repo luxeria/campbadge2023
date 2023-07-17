@@ -1,5 +1,5 @@
-use lux_camp_badge::led::{hsv_rgb_convert::*, Animation, LedMatrix};
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use lux_camp_badge::led::{hsv_rgb_convert::*, Animation, LedMatrix, WriteLeds};
+use smart_leds::RGB8;
 use std::time::Duration;
 
 struct Inner {
@@ -28,7 +28,7 @@ impl Fade {
     ) -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = RGB8>,
+        Driver: WriteLeds<Color = RGB8>,
     {
         Box::new(Self(Inner::new(step_size, fading_speed)))
     }
@@ -36,7 +36,7 @@ impl Fade {
 
 impl<B, C: LedMatrix<Driver = B>> Animation<C> for Fade
 where
-    B: SmartLedsWrite<Color = RGB8>,
+    B: WriteLeds<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
         self.0.fading_speed
@@ -64,7 +64,7 @@ impl Slide {
     ) -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = RGB8>,
+        Driver: WriteLeds<Color = RGB8>,
     {
         Box::new(Self(Inner::new(step_size, fading_speed)))
     }
@@ -72,7 +72,7 @@ impl Slide {
 
 impl<B, C: LedMatrix<Driver = B>> Animation<C> for Slide
 where
-    B: SmartLedsWrite<Color = RGB8>,
+    B: WriteLeds<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
         self.0.fading_speed

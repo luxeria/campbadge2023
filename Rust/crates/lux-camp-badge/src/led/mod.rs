@@ -1,13 +1,23 @@
 use std::time::Duration;
 
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use rgb::RGB8;
 
 use self::hsv_rgb_convert::Hsv8;
 
 pub mod hsv_rgb_convert;
 pub mod matrix;
 
-pub type Color<T> = <<T as LedMatrix>::Driver as SmartLedsWrite>::Color;
+#[cfg(feature = "smart-leds-trait")]
+pub mod smart_led_write;
+
+pub type Color<T> = <<T as LedMatrix>::Driver as WriteLeds>::Color;
+
+pub trait WriteLeds {
+    type Error;
+    type Color;
+
+    fn write(&mut self, buf: &[Self::Color]) -> Result<(), Self::Error>;
+}
 
 /// Configuration trait for implementing the LED matrix being used.
 ///
@@ -33,7 +43,7 @@ pub trait LedMatrix {
     const VOLUME: usize = Self::X * Self::Y * Self::Z;
 
     /// The driver for the LED matrix.
-    type Driver: SmartLedsWrite;
+    type Driver: WriteLeds;
 
     /// Read the entire internal frame buffer.
     fn read_buf(&self) -> &[Color<Self>]

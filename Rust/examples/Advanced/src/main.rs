@@ -11,10 +11,11 @@ use esp_idf_svc::systime::EspSystemTime;
 use esp_idf_svc::wifi::EspWifi;
 use esp_idf_sys::{self as _}; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use lux_camp_badge::led::matrix::{self, Handle, Matrix};
+use lux_camp_badge::led::smart_led_write::SmartLedsWriteDriver;
 use lux_camp_badge::led::{Animation, Color, LedMatrix};
 use lux_camp_badge_animations::prelude::*;
+use rgb::RGB8;
 use serde::Deserialize;
-use smart_leds_trait::RGB8;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -37,7 +38,7 @@ struct LuxBadge([Color<Self>; <Self as LedMatrix>::AREA]);
 impl LedMatrix for LuxBadge {
     const X: usize = 5;
     const Y: usize = 5;
-    type Driver = Ws2812Esp32Rmt;
+    type Driver = SmartLedsWriteDriver<Ws2812Esp32Rmt>;
 
     fn read_buf(&self) -> &[Color<Self>] {
         &self.0
@@ -131,7 +132,7 @@ fn connect_wifi(
 }
 
 fn start_web_server(
-    led_matrix: Arc<Mutex<Option<Handle<LuxBadge, Ws2812Esp32Rmt>>>>,
+    led_matrix: Arc<Mutex<Option<Handle<LuxBadge, SmartLedsWriteDriver<Ws2812Esp32Rmt>>>>>,
 ) -> EspHttpServer {
     let mut server = EspHttpServer::new(&Configuration::default()).unwrap();
 
@@ -259,7 +260,9 @@ fn main() -> ! {
     // Setup HTTP server and LED matrix
     let led_matrix = Matrix::new(LuxBadge::default())
         .animation(random::P30::build(EspSystemTime {}.now().as_millis() as u64))
-        .run(Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap())
+        .run(SmartLedsWriteDriver::new(
+            Ws2812Esp32Rmt::new(LED_CHANNEL, LED_PIN).unwrap(),
+        ))
         .unwrap();
     let _wifi = connect_wifi(modem);
     let _server = start_web_server(led_matrix);

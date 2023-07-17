@@ -1,6 +1,6 @@
-use lux_camp_badge::led::{Animation, LedMatrix};
+use lux_camp_badge::led::{Animation, LedMatrix, WriteLeds};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
-use smart_leds_trait::{SmartLedsWrite, RGB, RGB8};
+use smart_leds::hsv::{RGB, RGB8};
 use std::time::Duration;
 
 pub struct Gol<Color, const X: usize, const Y: usize> {
@@ -30,7 +30,7 @@ impl<Color, const X: usize, const Y: usize> Gol<Color, X, Y> {
     ) -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = Color>,
+        Driver: WriteLeds<Color = Color>,
         Color: Default + Copy + Send + 'static,
         Gol<Color, X, Y>: Animation<Matrix>,
     {
@@ -72,7 +72,7 @@ impl<Color, const X: usize, const Y: usize> Gol<Color, X, Y> {
 impl<const X: usize, const Y: usize, B, C: LedMatrix<Driver = B>> Animation<C>
     for Gol<RGB<u8>, X, Y>
 where
-    B: SmartLedsWrite<Color = RGB<u8>>,
+    B: WriteLeds<Color = RGB<u8>>,
 {
     fn init(&mut self, matrix: &mut C) -> Option<Duration> {
         self.alive = true;

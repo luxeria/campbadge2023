@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use lux_camp_badge::led::{Animation, LedMatrix};
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use lux_camp_badge::led::{Animation, LedMatrix, WriteLeds};
+use smart_leds::RGB8;
 
 /// Draw a static image to the LED matrix.
 pub struct Static<Color, const X: usize, const Y: usize>(pub [[Color; Y]; X]);
@@ -18,7 +18,7 @@ where
 impl<Color: Default, const X: usize, const Y: usize, B, C: LedMatrix<Driver = B>> Animation<C>
     for Static<Color, X, Y>
 where
-    B: SmartLedsWrite<Color = Color>,
+    B: WriteLeds<Color = Color>,
 {
     fn init(&mut self, matrix: &mut C) -> Option<Duration> {
         for y in 0..<C as LedMatrix>::Y {

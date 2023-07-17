@@ -12,10 +12,9 @@ esp-idf-sys = { version = "0.33", default-features = false }
 esp-idf-hal = { version = "0.41", optional = true, default-features = false }
 esp-idf-svc = { version = "0.46", optional = true, default-features = false }
 embedded-svc = { version = "0.25", optional = true, default-features = false }
-smart-leds = "0.3"
 smart-leds-trait = { version = "0.2", optional = true }
-ws2812-esp32-rmt-driver = "*"
 lazy_static = "1"
+rgb = "0.8.36"
 
 [features]
 default = ["std", "hal", "smart-leds-trait"]

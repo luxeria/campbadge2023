@@ -1,6 +1,6 @@
-use lux_camp_badge::led::{Animation, LedMatrix};
+use lux_camp_badge::led::{Animation, LedMatrix, WriteLeds};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use smart_leds::RGB8;
 use std::time::Duration;
 
 /// Each pixel has a % probability of 30% getting colored randomly on each frame.
@@ -11,7 +11,7 @@ impl P30 {
     pub fn build<Matrix, Driver>(seed: u64) -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = RGB8>,
+        Driver: WriteLeds<Color = RGB8>,
     {
         Box::new(Self(SmallRng::seed_from_u64(seed)))
     }
@@ -19,7 +19,7 @@ impl P30 {
 
 impl<B, C: LedMatrix<Driver = B>> Animation<C> for P30
 where
-    B: SmartLedsWrite<Color = RGB8>,
+    B: WriteLeds<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
         Some(Duration::from_millis(self.0.gen_range(100..1000)))
@@ -42,21 +42,21 @@ where
 pub struct Flip<Matrix, Driver>
 where
     Matrix: LedMatrix<Driver = Driver>,
-    Driver: SmartLedsWrite<Color = RGB8>,
+    Driver: WriteLeds<Color = RGB8>,
 {
-    color: <<Matrix as LedMatrix>::Driver as SmartLedsWrite>::Color,
+    color: <<Matrix as LedMatrix>::Driver as WriteLeds>::Color,
     rng: SmallRng,
 }
 
 impl<Matrix: LedMatrix<Driver = Driver>, Driver> Flip<Matrix, Driver>
 where
     Matrix: LedMatrix<Driver = Driver> + 'static,
-    Driver: SmartLedsWrite<Color = RGB8> + 'static,
+    Driver: WriteLeds<Color = RGB8> + 'static,
 {
     pub fn build(seed: u64) -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = RGB8>,
+        Driver: WriteLeds<Color = RGB8>,
     {
         let mut rng = SmallRng::seed_from_u64(seed);
         let color = RGB8::new(rng.gen(), rng.gen(), rng.gen());
@@ -67,7 +67,7 @@ where
 impl<Matrix, Driver, C: LedMatrix<Driver = Driver>> Animation<C> for Flip<Matrix, Driver>
 where
     Matrix: LedMatrix<Driver = Driver>,
-    Driver: SmartLedsWrite<Color = RGB8>,
+    Driver: WriteLeds<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
         Some(Duration::from_secs(1))

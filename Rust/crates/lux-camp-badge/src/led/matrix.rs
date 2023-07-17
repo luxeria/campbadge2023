@@ -60,7 +60,6 @@
 //! ```
 use esp_idf_svc::systime::EspSystemTime;
 use lazy_static::lazy_static;
-use smart_leds_trait::SmartLedsWrite;
 use std::{
     fmt::Debug,
     marker::PhantomData,
@@ -70,7 +69,7 @@ use std::{
 };
 
 pub use self::state::AnimationSet;
-use super::{Animation, Dimmable, LedMatrix};
+use super::{Animation, Dimmable, LedMatrix, WriteLeds};
 
 lazy_static! {
     static ref STOP: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
@@ -94,15 +93,11 @@ mod state {
 
 /// Default backend that does nothing.
 pub struct DummyBackend;
-impl SmartLedsWrite for DummyBackend {
+impl WriteLeds for DummyBackend {
     type Error = ();
     type Color = ();
 
-    fn write<T, I>(&mut self, _iterator: T) -> Result<(), Self::Error>
-    where
-        T: Iterator<Item = I>,
-        I: Into<Self::Color>,
-    {
+    fn write(&mut self, _: &[Self::Color]) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -119,15 +114,15 @@ impl LedMatrix for DummyMatrix {
 
     type Driver = DummyBackend;
 
-    fn read_buf(&self) -> &[<Self::Driver as SmartLedsWrite>::Color] {
+    fn read_buf(&self) -> &[<Self::Driver as WriteLeds>::Color] {
         unimplemented!()
     }
 
-    fn set_buf(&mut self, _buf: &mut [<Self::Driver as SmartLedsWrite>::Color]) {
+    fn set_buf(&mut self, _buf: &mut [<Self::Driver as WriteLeds>::Color]) {
         unimplemented!()
     }
 
-    fn set_2d(&mut self, _x: usize, _y: usize, _color: &<Self::Driver as SmartLedsWrite>::Color) {
+    fn set_2d(&mut self, _x: usize, _y: usize, _color: &<Self::Driver as WriteLeds>::Color) {
         unimplemented!()
     }
 }
@@ -175,15 +170,15 @@ impl<S: LedMatrix> MatrixBuilder<S, Missing<AnimationSet>> {
 impl<S, B> MatrixBuilder<S, AnimationSet>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
-    B: SmartLedsWrite + Send + 'static,
+    B: WriteLeds + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+    <B as WriteLeds>::Color: Clone + Dimmable,
 {
     /// Start the matrix in a background thread.
     pub fn run(
         mut self,
         driver: <S as LedMatrix>::Driver,
-    ) -> Result<Arc<Mutex<Option<Handle<S, B>>>>, Error<<B as SmartLedsWrite>::Error>> {
+    ) -> Result<Arc<Mutex<Option<Handle<S, B>>>>, Error<<B as WriteLeds>::Error>> {
         let mut matrix = Matrix {
             animation: self.animation.take().unwrap(),
             backend: self.matrix,
@@ -206,7 +201,7 @@ where
 pub struct Matrix<S, B>
 where
     S: LedMatrix<Driver = B>,
-    B: SmartLedsWrite + Send,
+    B: WriteLeds + Send,
     B::Error: Send,
 {
     animation: Box<dyn Animation<S> + Send>,
@@ -221,9 +216,9 @@ where
 impl<S, B> Matrix<S, B>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
-    B: SmartLedsWrite + Send + 'static,
+    B: WriteLeds + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+    <B as WriteLeds>::Color: Clone + Dimmable,
 {
     /// Creates a new [MatrixBuilder] with the following defaults:
     /// * `fps`: 24
@@ -237,7 +232,7 @@ where
         }
     }
 
-    fn init_animation(&mut self) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
+    fn init_animation(&mut self) -> Result<(), Error<<B as WriteLeds>::Error>> {
         self.frame_rate = self.animation.init(&mut self.backend);
         self.draw_framebuffer()
     }
@@ -245,7 +240,7 @@ where
     fn set_animation(
         &mut self,
         animation: Box<dyn Animation<S> + Send>,
-    ) -> Result<(), Error<<B as SmartLedsWrite>::Error>> {
+    ) -> Result<(), Error<<B as WriteLeds>::Error>> {
         self.animation = animation;
         self.init_animation()
     }
@@ -255,19 +250,27 @@ where
     // requires an iterator yielding color values instead of a slice of colors.
     fn draw_framebuffer(
         &mut self,
-    ) -> Result<(), crate::led::matrix::Error<<B as SmartLedsWrite>::Error>> {
-        let pixels = self.backend.read_buf().into_iter().cloned();
+    ) -> Result<(), crate::led::matrix::Error<<B as WriteLeds>::Error>> {
+        let pixels = self.backend.read_buf();
+
         match self.brightness {
-            Some(level) => self.driver.write(pixels.map(|mut pixel| {
-                pixel.dimm(level);
-                pixel
-            })),
-            _ => self.driver.write(pixels.into_iter()),
+            Some(level) => {
+                let dimmed: Vec<_> = pixels
+                    .into_iter()
+                    .cloned()
+                    .map(|mut pixel| {
+                        pixel.dimm(level);
+                        pixel
+                    })
+                    .collect();
+                self.driver.write(dimmed.as_slice())
+            }
+            _ => self.driver.write(pixels),
         }
         .map_err(Error::Driver)
     }
 
-    fn run(mut self) -> JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>> {
+    fn run(mut self) -> JoinHandle<Result<Matrix<S, B>, Error<<B as WriteLeds>::Error>>> {
         std::thread::spawn(|| loop {
             std::thread::sleep(
                 self.cycle_time
@@ -294,27 +297,27 @@ where
 
 /// Wrapper type for the `JoinHandle` of the thread in which the matrix is running.
 /// This allows for thread-safe sharing of the handle.
-pub struct Handle<S, B>(JoinHandle<Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>>>)
+pub struct Handle<S, B>(JoinHandle<Result<Matrix<S, B>, Error<<B as WriteLeds>::Error>>>)
 where
     S: LedMatrix<Driver = B>,
-    B: SmartLedsWrite + Send,
+    B: WriteLeds + Send,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable;
+    <B as WriteLeds>::Color: Clone + Dimmable;
 
 impl<S, B> Handle<S, B>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
-    B: SmartLedsWrite + Send + 'static,
+    B: WriteLeds + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+    <B as WriteLeds>::Color: Clone + Dimmable,
 {
-    fn start(matrix: Matrix<S, B>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
+    fn start(matrix: Matrix<S, B>) -> Result<Self, Error<<B as WriteLeds>::Error>> {
         *STOP.lock().map_err(|_| Error::Poisoned)? = false;
         Ok(Self(matrix.run()))
     }
 
     /// Stop the matrix and return the underlying instance if it was running.
-    fn stop(self) -> Result<Matrix<S, B>, Error<<B as SmartLedsWrite>::Error>> {
+    fn stop(self) -> Result<Matrix<S, B>, Error<<B as WriteLeds>::Error>> {
         *STOP.lock().map_err(|_| Error::Poisoned)? = true;
         self.0.join().map_err(|_| Error::Paniced)?
     }
@@ -323,13 +326,13 @@ where
     fn update(
         self,
         animation: Box<dyn Animation<S> + Send>,
-    ) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
+    ) -> Result<Self, Error<<B as WriteLeds>::Error>> {
         let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
         matrix.set_animation(animation)?;
         Self::start(matrix)
     }
     /// Restart with a new animation (if there is already a running instance).
-    fn brightness(self, level: Option<u8>) -> Result<Self, Error<<B as SmartLedsWrite>::Error>> {
+    fn brightness(self, level: Option<u8>) -> Result<Self, Error<<B as WriteLeds>::Error>> {
         let mut matrix = self.stop().map_err(|_| Error::Poisoned)?;
         matrix.brightness = level;
         matrix.draw_framebuffer()?;
@@ -341,12 +344,12 @@ where
 pub fn update<S, B>(
     handle: &Arc<Mutex<Option<Handle<S, B>>>>,
     animation: Box<dyn Animation<S> + Send>,
-) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
+) -> Result<(), Error<<B as WriteLeds>::Error>>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
-    B: SmartLedsWrite + Send + 'static,
+    B: WriteLeds + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+    <B as WriteLeds>::Color: Clone + Dimmable,
 {
     let mut handle = handle.lock().map_err(|_| Error::Poisoned)?;
     if let Some(inner) = handle.take() {
@@ -361,12 +364,12 @@ where
 pub fn brightness<S, B>(
     handle: &Arc<Mutex<Option<Handle<S, B>>>>,
     level: Option<f32>,
-) -> Result<(), Error<<B as SmartLedsWrite>::Error>>
+) -> Result<(), Error<<B as WriteLeds>::Error>>
 where
     S: LedMatrix<Driver = B> + Send + 'static,
-    B: SmartLedsWrite + Send + 'static,
+    B: WriteLeds + Send + 'static,
     B::Error: Send + Debug,
-    <B as SmartLedsWrite>::Color: Clone + Dimmable,
+    <B as WriteLeds>::Color: Clone + Dimmable,
 {
     let mut handle = handle.lock().map_err(|_| Error::Poisoned)?;
     if let Some(inner) = handle.take() {

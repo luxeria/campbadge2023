@@ -1,8 +1,7 @@
-use lux_camp_badge::led::{Animation, LedMatrix};
+use lux_camp_badge::led::{Animation, LedMatrix, WriteLeds};
 
 use glm;
-use smart_leds::hsv::{hsv2rgb, Hsv};
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use smart_leds::hsv::{hsv2rgb, Hsv, RGB8};
 use std::time::Duration;
 
 struct PerlinNoiseLight {
@@ -25,7 +24,7 @@ impl PerlinAnimation {
     pub fn build<Matrix, Driver>() -> Box<dyn Animation<Matrix> + Send>
     where
         Matrix: LedMatrix<Driver = Driver>,
-        Driver: SmartLedsWrite<Color = RGB8>,
+        Driver: WriteLeds<Color = RGB8>,
     {
         Box::new(Self(PerlinNoiseLight::new(0.05)))
     }
@@ -33,7 +32,7 @@ impl PerlinAnimation {
 
 impl<B, C: LedMatrix<Driver = B>> Animation<C> for PerlinAnimation
 where
-    B: SmartLedsWrite<Color = RGB8>,
+    B: WriteLeds<Color = RGB8>,
 {
     fn init(&mut self, _matrix: &mut C) -> Option<Duration> {
         Some(Duration::from_millis(100))
