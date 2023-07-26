@@ -15,6 +15,9 @@ Um das Anschliessen zu vereinfachen enthält der Badge einen logic level shifter
 
 ![Schema für Pinout in Beispielprogrammen](Hardware/PinoutExample.png)
 
+*Reihenfolge der Leds:*
+<img src="Hardware/LEDOrder.png" height=450></img>
+
 #### [Hardware](Hardware/README.md)
  * Schaltplan
  * PCB Design
