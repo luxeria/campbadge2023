@@ -9,10 +9,10 @@ class Animation
     public:
         virtual void tick() = 0;
     protected:
-        const int frameLength;
+        int frameLength;
         unsigned long mili = 0;
 
-        Animation(int count, int length)
+        Animation(int length)
             : frameLength(length)
         {
             FastLED.clear();
@@ -27,54 +27,87 @@ class Animation
         }
 };
 
-class RainbowAnimation: public Animation {
+class Rainbow: public Animation {
     private:
-        int ticker = 0;
+        int color = 0;
+        int dColor = 1;
     public:
         void tick() {
 
             if (!frameFinished()) return;
-
-            int color;
-            if (ticker%2) color = CRGB::Purple;
-            else color = CRGB::HTMLColorCode::Green;
-            
-            for (int i=0;i<NUM_LEDS;i++){
-                leds[i] =  color;
-            }
-            FastLED.show();
-
-            ticker = (++ticker)%2;
+            FastLED.showColor(CHSV(color, 255, 255));
+            color += dColor;
         };
-        RainbowAnimation()
-            : Animation(2, 500)
+        Rainbow()
+            : Animation(50)
         {};
 };
 
 class Snake: public Animation {
     private:
-        const int length = 5;
-        int position = 0;
+        int length = (NUM_LEDS+3);
+        const int order[NUM_LEDS+3] = { 0, 1, 2, 3, 4,
+                                      9, 8, 7, 6, 5,
+                                     10,11,12,13,14,
+                                     19,18,17,16,15,
+                                     20,21,22,23,24,
+                                     -1,-1,-1};
+        int position[6] = {25,26,27,0,1,2};
+        int color[6] = {
+            CRGB::HTMLColorCode::LightCyan,
+            CRGB::HTMLColorCode::SkyBlue,
+            CRGB::HTMLColorCode::DeepSkyBlue,
+            CRGB::HTMLColorCode::Blue,
+            CRGB::HTMLColorCode::MidnightBlue,
+            CRGB::HTMLColorCode::LightSteelBlue
+                        };
     public:
         void tick() {
 
             if (!frameFinished()) return;
             
             FastLED.clear();
-
-            // for (int i=position;i<(position+length);i++){
-            //     leds[i%NUM_LEDS] =  CRGB::Blue;
-            // }
-            leds[position] = CRGB::Blue;
-
-            position=(++position)%NUM_LEDS;
+            for (int i=0; i<6; i++) {
+                int pos = order[position[i]];
+                if (pos>-1) leds[pos] = color[i];
+            }
+            for  (int i=0; i<5; i++) {
+                position[i] = position[i+1];
+            }
+            position[5] = (position[5]+1)%length;
             FastLED.show();
+
         };
 
         Snake()
-            : Animation(2, 500)
+            : Animation(150)
         {};
 };
 
+class Strobo: public Animation {
+    private:
+        int length = (NUM_LEDS+3);
+    public:
+        void tick() {
+
+            if (!frameFinished()) return;
+
+            if (frameLength>50) frameLength*=0.9;
+            else frameLength = 2000;
+
+            FastLED.setBrightness(200);
+            FastLED.showColor(CRGB::HTMLColorCode::White);
+            delay(50);
+            FastLED.setBrightness(25);
+            FastLED.clear();
+            FastLED.show();
+
+
+        };
+
+        Strobo()
+            : Animation(2000)
+        {};
+};
 
 #endif

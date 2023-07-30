@@ -46,7 +46,7 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);  // GRB ordering assumed
   FastLED.setBrightness(25);
 
-  animation  = new Snake();
+  animation  = new Rainbow();
 }
 
 
@@ -70,8 +70,9 @@ void handleAnimation(){
   Serial.println("Animatiton:" + animationType);
 
   delete animation;
-  if (animationType=="rainbow") animation = new RainbowAnimation();
+  if (animationType=="rainbow") animation = new Rainbow();
   if (animationType=="snake") animation = new Snake();
+  if (animationType=="strobo") animation = new Strobo();
 
 
   server.send(200, "text/plain", "");
