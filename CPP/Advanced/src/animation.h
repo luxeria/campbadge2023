@@ -92,13 +92,15 @@ class Strobo: public Animation {
 
             if (!frameFinished()) return;
 
+            int brightness = FastLED.getBrightness();
+
             if (frameLength>50) frameLength*=0.9;
             else frameLength = 2000;
 
             FastLED.setBrightness(200);
             FastLED.showColor(CRGB::HTMLColorCode::White);
             delay(50);
-            FastLED.setBrightness(25);
+            FastLED.setBrightness(brightness);
             FastLED.clear();
             FastLED.show();
 

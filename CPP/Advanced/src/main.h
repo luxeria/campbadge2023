@@ -18,6 +18,7 @@ CRGB leds[NUM_LEDS];
 
 void handleIndex();
 void handleAnimation();
+void handleBrightness();
 void handleNotFound();
 void setupRouting();
 void setupWifi();

@@ -14,6 +14,7 @@ Animation* animation;
 void setupRouting() {
   server.on("/", handleIndex);
   server.on("/animation", HTTP_POST, handleAnimation);
+  server.on("/brightness", HTTP_GET, handleBrightness);
   server.onNotFound(handleNotFound);
   server.begin();
 }
@@ -78,6 +79,14 @@ void handleAnimation(){
   server.send(200, "text/plain", "");
 }
 
+
+void handleBrightness(){
+  int brightness = server.arg("val").toInt();
+  Serial.println("Brightness: " + server.arg("val"));
+  FastLED.setBrightness(brightness);
+
+  server.send(200, "text/plain", "");
+}
 void handleNotFound(){
   server.send(404, "text/plain", "Not found");
 }
