@@ -14,6 +14,7 @@ Animation* animation;
 void setupRouting() {
   server.on("/", handleIndex);
   server.on("/animation", HTTP_POST, handleAnimation);
+  server.on("/mode", HTTP_GET, handleMode);
   server.on("/brightness", HTTP_GET, handleBrightness);
   server.onNotFound(handleNotFound);
   server.begin();
@@ -58,7 +59,17 @@ void loop() {
   }
   server.handleClient();
 
-  animation->tick();
+  if (mode == Mode::off) {
+    FastLED.clear();
+    FastLED.show();
+    
+  }
+  else if(mode == Mode::animations) {
+    animation->tick();
+  }
+  else if(mode == Mode::interactive){
+    FastLED.show();
+  };
 }
 
 void handleAnimation(){
@@ -79,6 +90,15 @@ void handleAnimation(){
   server.send(200, "text/plain", "");
 }
 
+void handleMode(){
+  String modeType = server.arg("set");
+  Serial.println("Mode: " + modeType);
+  if (modeType == "animation")    mode = Mode::animations;
+  if (modeType == "interactive" ) mode = Mode::interactive;
+  if (modeType == "off")          mode = Mode::off;
+
+  server.send(200, "text/plain", "");
+}
 
 void handleBrightness(){
   int brightness = server.arg("val").toInt();
