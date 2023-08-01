@@ -8,12 +8,15 @@
 #include "json_post_handler.html"
 #include "main.h"
 #include "animation.h"
+#include "matrix.h"
 
 Animation* animation;
+Matrix* matrix;
 
 void setupRouting() {
   server.on("/", handleIndex);
   server.on("/animation", HTTP_POST, handleAnimation);
+  server.on("/interactive", HTTP_POST, handleInteractiveMode);
   server.on("/mode", HTTP_GET, handleMode);
   server.on("/brightness", HTTP_GET, handleBrightness);
   server.onNotFound(handleNotFound);
@@ -49,6 +52,7 @@ void setup() {
   FastLED.setBrightness(25);
 
   animation  = new Rainbow();
+  matrix = new Matrix(leds,DIMX,DIMY);
 }
 
 
@@ -107,6 +111,22 @@ void handleBrightness(){
 
   server.send(200, "text/plain", "");
 }
+
+void handleInteractiveMode(){
+  String body = server.arg("plain");
+  deserializeJson(jsonDocument, body);
+  String pixels = jsonDocument["pixels"];
+
+  for (int i = 0; i<NUM_LEDS; i++) {
+    String color = pixels.substring(i*8+1,i*8+7);
+    int y = DIMY - i/DIMX -1;
+    int x = i % DIMX;
+    matrix->set(x,y,std::stoi(color.c_str(),0,16));
+  }
+
+  server.send(200, "text/plain", "");
+}
+
 void handleNotFound(){
   server.send(404, "text/plain", "Not found");
 }
