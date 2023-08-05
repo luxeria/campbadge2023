@@ -37,6 +37,9 @@ Damit kannst du die Beispielprogramme wie folgt auf das Board kopieren:
 
     mpremote cp main.py :.
 
+> **Falls ```mpremote cp``` bei euch nicht funktioniert** und Diverse Fehlermeldungen erscheinen liegt es evtl. daran, dass euer OS beim verbinden auf die serielle Schnittstelle den DTS/RTS auf high setzt. Beim esp32c3 führt dies dazu dass er rebootet. Dies kann unter linux mit folgendem Befehlt deaktivieren ```stty -F /dev/ttyACM0 -hup``` Source: ``
+>  https://github.com/micropython/micropython/issues/9659#issuecomment-1312791767 ``
+
 Alternativ kannst du auch Snippets direkt in die serielle Konsole kopieren,
 in dem du über `CTRL+E` in den Einfügemodus wechselst, dein Beispielprogramm
 aus der Zwischenablage hineinkopierst, und dann die Eingabe mit `CTRL+D`
